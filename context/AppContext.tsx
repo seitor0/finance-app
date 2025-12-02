@@ -42,7 +42,7 @@ export interface Movimiento {
   descripcion: string;
   monto: number;
   fecha: string;
-   categoria?: string; 
+  categoria?: string;
 }
 
 export interface Cliente {
@@ -60,21 +60,17 @@ interface AppContextType {
   cosasPorPagar: ToPayItem[];
   loadingData: boolean;
 
-  // COSAS POR PAGAR
   agregarCosaPorPagar: (item: Omit<ToPayItem, "id">) => Promise<void>;
   cambiarEstadoPago: (id: string, nuevoEstado: PaymentStatus) => Promise<void>;
 
-  // CLIENTES
   agregarCliente: (data: Omit<Cliente, "id">) => Promise<void>;
   editarCliente: (id: string, data: Partial<Cliente>) => Promise<void>;
   borrarCliente: (id: string) => Promise<void>;
 
-  // INGRESOS
   agregarIngreso: (data: Omit<Movimiento, "id">) => Promise<void>;
   editarIngreso: (id: string, data: Partial<Movimiento>) => Promise<void>;
   borrarIngreso: (id: string) => Promise<void>;
 
-  // GASTOS
   agregarGasto: (data: Omit<Movimiento, "id">) => Promise<void>;
   editarGasto: (id: string, data: Partial<Movimiento>) => Promise<void>;
   borrarGasto: (id: string) => Promise<void>;
@@ -87,7 +83,7 @@ const AppContext = createContext<AppContextType | null>(null);
 // -----------------------------------
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, loadingUser } = useAuth();
 
   const [ingresos, setIngresos] = useState<Movimiento[]>([]);
   const [gastos, setGastos] = useState<Movimiento[]>([]);
@@ -95,7 +91,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [cosasPorPagar, setCosasPorPagar] = useState<ToPayItem[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
+  // 🔥 Esperar a que Firebase diga si hay usuario antes de leer Firestore
   useEffect(() => {
+    if (loadingUser) return; // ⛔ Esperar a Firebase Auth
+
     if (!user) {
       setIngresos([]);
       setGastos([]);
@@ -106,28 +105,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const uid = user.uid;
+    setLoadingData(true);
 
     // -------------------------------------
-    // SUSCRIPCIONES
+    // SUSCRIPCIONES A FIRESTORE
     // -------------------------------------
+
     const unsubIngresos = onSnapshot(
       query(collection(db, "usuarios", uid, "ingresos"), orderBy("fecha", "desc")),
-      snapshot => setIngresos(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Movimiento[])
+      snapshot => {
+        const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Movimiento[];
+        setIngresos(data);
+      }
     );
 
     const unsubGastos = onSnapshot(
       query(collection(db, "usuarios", uid, "gastos"), orderBy("fecha", "desc")),
-      snapshot => setGastos(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Movimiento[])
+      snapshot => {
+        const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Movimiento[];
+        setGastos(data);
+      }
     );
 
     const unsubClientes = onSnapshot(
       collection(db, "usuarios", uid, "clientes"),
-      snapshot => setClientes(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Cliente[])
+      snapshot => {
+        const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Cliente[];
+        setClientes(data);
+      }
     );
 
     const unsubPagar = onSnapshot(
       collection(db, "usuarios", uid, "cosasPorPagar"),
-      snapshot => setCosasPorPagar(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as ToPayItem[])
+      snapshot => {
+        const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as ToPayItem[];
+        setCosasPorPagar(data);
+      }
     );
 
     setLoadingData(false);
@@ -138,7 +151,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       unsubClientes();
       unsubPagar();
     };
-  }, [user]);
+  }, [user, loadingUser]);
 
   // -------------------------------------
   // INGRESOS
@@ -210,16 +223,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
 
     const ref = doc(db, "usuarios", user.uid, "cosasPorPagar", id);
+    const item = cosasPorPagar.find((i) => i.id === id);
 
-    if (nuevoEstado === "pagado") {
-      const item = cosasPorPagar.find((i) => i.id === id);
-      if (item) {
-        await addDoc(collection(db, "usuarios", user.uid, "gastos"), {
-          descripcion: item.nombre,
-          monto: item.monto,
-          fecha: new Date().toISOString().split("T")[0],
-        });
-      }
+    // Si se paga → guardar también como gasto
+    if (nuevoEstado === "pagado" && item) {
+      await addDoc(collection(db, "usuarios", user.uid, "gastos"), {
+        descripcion: item.nombre,
+        monto: item.monto,
+        categoria: item.categoria ?? "General",
+        fecha: new Date().toISOString().split("T")[0],
+      });
     }
 
     await updateDoc(ref, { status: nuevoEstado });
@@ -257,6 +270,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 export function useApp() {
   const ctx = useContext(AppContext);
-  if (!ctx) throw new Error("useApp debe usarse dentro de AppProvider");
+  if (!ctx) throw new Error("❌ useApp debe usarse dentro de <AppProvider>");
   return ctx;
 }
