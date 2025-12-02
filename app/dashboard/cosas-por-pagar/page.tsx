@@ -1,53 +1,110 @@
 "use client";
 
+import { useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { CheckCircle, Clock, PauseCircle } from "lucide-react";
+import FormPorPagar from "./FormPorPagar";
 
 export default function CosasPorPagarPage() {
-  const { cosasPorPagar, cambiarEstadoPago } = useApp();
+  const {
+    cosasPorPagar,
+    agregarCosaPorPagar,
+    cambiarEstadoPago,
+  } = useApp();
+
+  const [showForm, setShowForm] = useState(false);
+  const [editItem, setEditItem] = useState<any>(null);
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-semibold tracking-tight">Cosas por pagar</h1>
+    <div>
+      <h1 className="text-3xl font-semibold mb-6">Cosas por pagar</h1>
 
-      <div className="grid gap-4">
-        {cosasPorPagar.map((item) => (
-          <div
-            key={item.id}
-            className="p-4 rounded-lg bg-white dark:bg-gray-800 shadow flex justify-between items-center"
-          >
-            <div>
-              <div className="font-semibold">{item.nombre}</div>
-              <div className="text-sm text-gray-400">
-                ${item.monto} — vence {item.vencimiento}
-              </div>
-            </div>
+      {/* BOTÓN NUEVO */}
+      <button
+        onClick={() => {
+          setEditItem(null);
+          setShowForm(true);
+        }}
+        className="mb-4 bg-blue-600 text-white px-4 py-2 rounded"
+      >
+        + Agregar pago pendiente
+      </button>
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => cambiarEstadoPago(item.id, "pagado")}
-                className="p-2 rounded bg-green-600 text-white"
-              >
-                <CheckCircle size={18} />
-              </button>
+      {/* TABLA */}
+      <table className="min-w-full bg-white shadow rounded">
+        <thead>
+          <tr className="border-b">
+            <th className="p-3 text-left">Nombre</th>
+            <th className="p-3 text-left">Categoría</th>
+            <th className="p-3 text-left">Monto</th>
+            <th className="p-3 text-left">Vencimiento</th>
+            <th className="p-3 text-left">Estado</th>
+            <th className="p-3 text-left">Acciones</th>
+          </tr>
+        </thead>
 
-              <button
-                onClick={() => cambiarEstadoPago(item.id, "falta")}
-                className="p-2 rounded bg-yellow-600 text-white"
-              >
-                <Clock size={18} />
-              </button>
+        <tbody>
+          {cosasPorPagar.map((item) => (
+            <tr key={item.id} className="border-b">
+              <td className="p-3">{item.nombre}</td>
+              <td className="p-3">{item.categoria || "-"}</td>
+              <td className="p-3">${item.monto.toLocaleString("es-AR")}</td>
+              <td className="p-3">{item.vencimiento || "-"}</td>
+              <td className="p-3 capitalize">{item.status}</td>
 
-              <button
-                onClick={() => cambiarEstadoPago(item.id, "pospuesto")}
-                className="p-2 rounded bg-gray-500 text-white"
-              >
-                <PauseCircle size={18} />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+              <td className="p-3 flex gap-3">
+                {/* MARCAR PAGADO */}
+                {item.status !== "pagado" && (
+                  <button
+                    className="text-green-600"
+                    onClick={() => cambiarEstadoPago(item.id, "pagado")}
+                  >
+                    Marcar pagado
+                  </button>
+                )}
+
+                {/* EDITAR */}
+                <button
+                  className="text-blue-600"
+                  onClick={() => {
+                    setEditItem(item);
+                    setShowForm(true);
+                  }}
+                >
+                  Editar
+                </button>
+
+                {/* POSPONER */}
+                {item.status !== "pospuesto" && (
+                  <button
+                    className="text-orange-600"
+                    onClick={() => cambiarEstadoPago(item.id, "pospuesto")}
+                  >
+                    Posponer
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* FORMULARIO */}
+      {showForm && (
+        <FormPorPagar
+          editItem={editItem}
+          onClose={() => setShowForm(false)}
+          onSave={(data) => {
+            if (editItem) {
+              // EDITAR → solo cambia el estado
+              cambiarEstadoPago(editItem.id, data.status);
+            } else {
+              // NUEVO
+              agregarCosaPorPagar(data);
+            }
+            setShowForm(false);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useApp } from "@/context/AppContext";
 import AppleRings from "./_components/AppleRings";
 import FinanzasDelMes from "./_components/FinanzasDelMes";
 import WidgetCosasPorPagar from "./_components/WidgetCosasPorPagar";
+import WidgetDisponible from "./_components/WidgetDisponible";
 
 type MovimientoUI = {
   id: string;
@@ -271,6 +272,11 @@ export default function DashboardPage() {
               USD {totalUSD.toLocaleString("es-AR")}
             </p>
           </div>
+         <div className="grid grid-cols-3 gap-4">
+  <WidgetCosasPorPagar />
+  <WidgetDisponible />
+</div>
+
         </div>
       </section>
 
