@@ -2,7 +2,7 @@
 
 import { useApp } from "@/context/AppContext";
 import { useState } from "react";
-import "./styles.css";                 // ✔️ IMPORT CORREGIDO
+import "./styles.css";
 import FormularioCliente from "./FormularioCliente";
 
 export default function ClientesPage() {
@@ -30,17 +30,19 @@ export default function ClientesPage() {
             <th className="p-3 text-left">Nombre</th>
             <th className="p-3 text-left">Email</th>
             <th className="p-3 text-left">Teléfono</th>
-            <th className="p-3 text-left">CUIT</th>
+            <th className="p-3 text-left">Notas</th>
             <th className="p-3 text-left">Acciones</th>
           </tr>
         </thead>
+
         <tbody>
           {clientes.map((c) => (
             <tr key={c.id} className="border-b">
               <td className="p-3">{c.nombre}</td>
               <td className="p-3">{c.email}</td>
               <td className="p-3">{c.telefono}</td>
-              <td className="p-3">{c.cuit}</td>
+              <td className="p-3">{c.notas || "-"}</td>
+
               <td className="p-3 flex gap-2">
                 <button
                   onClick={() => {
@@ -51,6 +53,7 @@ export default function ClientesPage() {
                 >
                   Editar
                 </button>
+
                 <button
                   onClick={() => borrarCliente(c.id)}
                   className="text-red-600"
@@ -67,10 +70,15 @@ export default function ClientesPage() {
         <FormularioCliente
           onClose={() => setShowForm(false)}
           editItem={editItem}
-          onSave={(data) => {
-            editItem ? editarCliente(data) : agregarCliente(data);
-            setShowForm(false);
-          }}
+         onSave={(data) => {
+  if (editItem) {
+    editarCliente(editItem.id, data);   // ← AHORA CORRECTO
+  } else {
+    agregarCliente(data);
+  }
+  setShowForm(false);
+}}
+
         />
       )}
     </div>

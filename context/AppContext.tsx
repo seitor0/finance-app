@@ -47,8 +47,9 @@ export interface Movimiento {
 export interface Cliente {
   id: string;
   nombre: string;
-  telefono?: string;
-  email?: string;
+  email: string;
+  telefono: string;
+  notas?: string; // ← AGREGADO
 }
 
 interface AppContextType {
@@ -119,9 +120,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Clientes
     const qClientes = collection(db, "usuarios", uid, "clientes");
     const unsubClientes = onSnapshot(qClientes, (snapshot) => {
-      setClientes(
-        snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Cliente[]
-      );
+     setClientes(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Cliente[]);
+
     });
 
     // Cosas por pagar
