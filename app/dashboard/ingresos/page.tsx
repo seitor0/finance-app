@@ -75,8 +75,8 @@ export default function IngresosPage() {
           onClose={() => setShowForm(false)}
           editItem={editItem}
           onSave={(data) => {
-            if (editItem) editarIngreso(data);
-            else agregarIngreso(data);
+            if (editItem) editarIngreso(editItem.id, data);
+else agregarIngreso(data);
             setShowForm(false);
           }}
         />
