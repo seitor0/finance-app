@@ -78,14 +78,17 @@ export default function AhorrosPage() {
       </div>
 
       {showForm && (
-        <FormularioAhorro
-          editItem={editItem}
-          onClose={() => {
-            setShowForm(false);
-            setEditItem(null);
-          }}
-        />
-      )}
+  <FormularioAhorro
+    onClose={() => {
+      setShowForm(false);
+      setEditItem(null);
+    }}
+    onSuccess={() => {
+      setShowForm(false);
+      setEditItem(null);
+    }}
+  />
+)}
     </div>
   );
 }
