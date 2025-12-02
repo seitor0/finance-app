@@ -15,6 +15,7 @@ import {
   orderBy,
   addDoc,
   updateDoc,
+  deleteDoc,
   doc,
 } from "firebase/firestore";
 
@@ -36,7 +37,6 @@ export interface ToPayItem {
   importante?: boolean;
 }
 
-// Movimientos para ingresos/gastos
 export interface Movimiento {
   id: string;
   descripcion: string;
@@ -44,16 +44,28 @@ export interface Movimiento {
   fecha: string;
 }
 
+export interface Cliente {
+  id: string;
+  nombre: string;
+  telefono?: string;
+  email?: string;
+}
+
 interface AppContextType {
   ingresos: Movimiento[];
   gastos: Movimiento[];
-  clientes: any[];
+  clientes: Cliente[];
   cosasPorPagar: ToPayItem[];
   loadingData: boolean;
 
-  // acciones
+  // Acciones: COSAS POR PAGAR
   agregarCosaPorPagar: (item: Omit<ToPayItem, "id">) => Promise<void>;
   cambiarEstadoPago: (id: string, nuevoEstado: PaymentStatus) => Promise<void>;
+
+  // Acciones: CLIENTES
+  agregarCliente: (data: Omit<Cliente, "id">) => Promise<void>;
+  editarCliente: (id: string, data: Partial<Cliente>) => Promise<void>;
+  borrarCliente: (id: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -66,7 +78,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [ingresos, setIngresos] = useState<Movimiento[]>([]);
   const [gastos, setGastos] = useState<Movimiento[]>([]);
-  const [clientes, setClientes] = useState<any[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [cosasPorPagar, setCosasPorPagar] = useState<ToPayItem[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
@@ -107,7 +119,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Clientes
     const qClientes = collection(db, "usuarios", uid, "clientes");
     const unsubClientes = onSnapshot(qClientes, (snapshot) => {
-      setClientes(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setClientes(
+        snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Cliente[]
+      );
     });
 
     // Cosas por pagar
@@ -129,7 +143,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   // -------------------------------------
-  // AGREGAR
+  // COSAS POR PAGAR
   // -------------------------------------
   async function agregarCosaPorPagar(item: Omit<ToPayItem, "id">) {
     if (!user) return;
@@ -140,15 +154,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  // -------------------------------------
-  // CAMBIAR ESTADO
-  // -------------------------------------
   async function cambiarEstadoPago(id: string, nuevoEstado: PaymentStatus) {
     if (!user) return;
 
     const ref = doc(db, "usuarios", user.uid, "cosasPorPagar", id);
 
-    // Si se paga → crear gasto + marcar pagado
     if (nuevoEstado === "pagado") {
       const item = cosasPorPagar.find((i) => i.id === id);
       if (item) {
@@ -160,8 +170,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Update
     await updateDoc(ref, { status: nuevoEstado });
+  }
+
+  // -------------------------------------
+  // CLIENTES
+  // -------------------------------------
+  async function agregarCliente(data: Omit<Cliente, "id">) {
+    if (!user) return;
+
+    await addDoc(collection(db, "usuarios", user.uid, "clientes"), data);
+  }
+
+  async function editarCliente(id: string, data: Partial<Cliente>) {
+    if (!user) return;
+
+    const ref = doc(db, "usuarios", user.uid, "clientes", id);
+    await updateDoc(ref, data);
+  }
+
+  async function borrarCliente(id: string) {
+    if (!user) return;
+
+    const ref = doc(db, "usuarios", user.uid, "clientes", id);
+    await deleteDoc(ref);
   }
 
   return (
@@ -174,6 +206,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         loadingData,
         agregarCosaPorPagar,
         cambiarEstadoPago,
+        agregarCliente,
+        editarCliente,
+        borrarCliente,
       }}
     >
       {children}
