@@ -28,63 +28,59 @@ export default function DashboardPage() {
     setDineroDisponible,
   } = useApp();
 
-  // Total de pendientes (cosas por pagar con status = falta)
-const totalPendientesMes = useMemo(
-  () =>
-    cosasPorPagar
-      .filter((c: any) => c.status === "falta")
-      .reduce((acc: number, c: any) => acc + (c.monto ?? 0), 0),
-  [cosasPorPagar]
-);
-
-
-
-  const [texto, setTexto] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [respuesta, setRespuesta] = useState<any>(null);
-
+  // ======================
+  // 🧠 FECHA ACTUAL + KEY DEL MES: "YYYY-MM"
+  // ======================
   const ahora = new Date();
-  const mesActual = ahora.getMonth();
   const añoActual = ahora.getFullYear();
+  const mesActualNumero = ahora.getMonth() + 1; // 1..12
+  const mesActualKey = `${añoActual}-${String(mesActualNumero).padStart(2, "0")}`; // → "2025-12"
 
+  // ======================
+  // 🧮 INGRESOS DEL MES
+  // ======================
   const totalIngresosMes = useMemo(
     () =>
       ingresos
-        .filter((i: any) => {
-          const f = new Date(i.fecha);
-          return (
-            f.getMonth() === mesActual && f.getFullYear() === añoActual
-          );
-        })
-        .reduce(
-          (acc: number, i: any) => acc + (i.monto ?? 0),
-          0
-        ),
-    [ingresos, mesActual, añoActual]
+        .filter((i: any) => i.fecha?.startsWith(mesActualKey))
+        .reduce((acc: number, i: any) => acc + Number(i.monto ?? 0), 0),
+    [ingresos, mesActualKey]
   );
 
+  // ======================
+  // 🧮 GASTOS DEL MES
+  // ======================
   const totalGastosMes = useMemo(
     () =>
       gastos
-        .filter((g: any) => {
-          const f = new Date(g.fecha);
-          return (
-            f.getMonth() === mesActual && f.getFullYear() === añoActual
-          );
-        })
-        .reduce(
-          (acc: number, g: any) => acc + (g.monto ?? 0),
-          0
-        ),
-    [gastos, mesActual, añoActual]
+        .filter((g: any) => g.fecha?.startsWith(mesActualKey))
+        .reduce((acc: number, g: any) => acc + Number(g.monto ?? 0), 0),
+    [gastos, mesActualKey]
   );
 
-  
+  // ======================
+  // 🧮 PENDIENTES DEL MES
+  // ======================
+  const totalPendientesMes = useMemo(
+    () =>
+      cosasPorPagar
+        .filter(
+          (c: any) =>
+            c.status === "falta" &&
+            (!c.vencimiento || String(c.vencimiento).startsWith(mesActualKey))
+        )
+        .reduce((acc: number, c: any) => acc + Number(c.monto ?? 0), 0),
+    [cosasPorPagar, mesActualKey]
+  );
 
-// Balance real del mes
-const balanceMes = totalIngresosMes - totalGastosMes - totalPendientesMes;
+  // ======================
+  // 🧮 BALANCE FINAL DEL MES
+  // ======================
+  const balanceMes = totalIngresosMes - totalGastosMes - totalPendientesMes;
 
-
+  // ======================
+  // LISTA DE MOVIMIENTOS (últimos 5)
+  // ======================
   const movimientos: MovimientoUI[] = useMemo(() => {
     const lista: MovimientoUI[] = [
       ...ingresos.map((i: any) => ({
@@ -107,6 +103,9 @@ const balanceMes = totalIngresosMes - totalGastosMes - totalPendientesMes;
       .slice(0, 5);
   }, [ingresos, gastos]);
 
+  // ======================
+  // AHORROS USD TOTAL
+  // ======================
   const totalUSD = useMemo(
     () =>
       (ahorros ?? []).reduce(
@@ -115,6 +114,13 @@ const balanceMes = totalIngresosMes - totalGastosMes - totalPendientesMes;
       ),
     [ahorros]
   );
+
+  // ======================
+  // IA PARA INGRESOS/GASTOS
+  // ======================
+  const [texto, setTexto] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [respuesta, setRespuesta] = useState<any>(null);
 
   async function enviarAI() {
     if (!texto.trim()) return;
@@ -179,11 +185,16 @@ const balanceMes = totalIngresosMes - totalGastosMes - totalPendientesMes;
     }
   }
 
+  // ==========================================================
+  // =====================     RENDER     ====================
+  // ==========================================================
   return (
     <div className="space-y-8 fade-up">
+      
       {/* FILA 1: resumen + objetivos + ahorro */}
       <section className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)]">
-        {/* Resumen + anillos + cosas por pagar */}
+        
+        {/* RESUMEN IZQUIERDA */}
         <div className="glass-card">
           <div className="flex items-start justify-between mb-6">
             <div>
@@ -194,9 +205,11 @@ const balanceMes = totalIngresosMes - totalGastosMes - totalPendientesMes;
                 Balance general
               </h2>
               <p className="text-sm text-slate-500 mt-1">
-                Ingresos, gastos y ahorro actual.
+                Ingresos, gastos, pendientes y ahorro actual.
               </p>
             </div>
+
+            {/* BALANCE NUMÉRICO */}
             <div className="text-right">
               <p className="text-xs text-slate-400">Balance</p>
               <p
@@ -210,30 +223,36 @@ const balanceMes = totalIngresosMes - totalGastosMes - totalPendientesMes;
             </div>
           </div>
 
-        <AppleRings
-  ingresosMes={totalIngresosMes}
-  gastosMes={totalGastosMes}
-  pendientesMes={totalPendientesMes}
-/>
+          {/* ANILLOS */}
+          <AppleRings
+            ingresosMes={totalIngresosMes}
+            gastosMes={totalGastosMes}
+            pendientesMes={totalPendientesMes}
+          />
 
+          {/* Lista mini de pendientes */}
           <div className="mt-8">
             <WidgetCosasPorPagar />
           </div>
         </div>
 
-        {/* Columna derecha: objetivos + ahorro */}
+        {/* COLUMNA DERECHA */}
         <div className="space-y-4">
+          {/* OBJETIVOS */}
           <div className="glass-card">
             <h3 className="text-lg font-semibold mb-4">
               Objetivos del mes
             </h3>
+
             <div className="space-y-3 text-sm">
+              {/* Ahorro ideal */}
               <div className="flex items-center justify-between">
                 <span>Ahorro deseado</span>
                 <span className="font-semibold">
-                  ${Math.round(totalIngresosMes * 0.2).toLocaleString("es-AR")}
+                  ${(Math.round(totalIngresosMes * 0.2)).toLocaleString("es-AR")}
                 </span>
               </div>
+
               <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
                 <div
                   className="h-full bg-emerald-500 transition-all"
@@ -245,20 +264,20 @@ const balanceMes = totalIngresosMes - totalGastosMes - totalPendientesMes;
                               (totalIngresosMes * 0.2 || 1) *
                               100,
                             100
-                          ).toFixed(0)}%`
+                          )}%`
                         : "0%",
                   }}
                 />
               </div>
 
+              {/* Gasto ideal */}
               <div className="flex items-center justify-between mt-4">
                 <span>Gasto ideal</span>
                 <span className="font-semibold">
-                  ${Math.round(totalIngresosMes * 0.5).toLocaleString(
-                    "es-AR"
-                  )}
+                  ${(Math.round(totalIngresosMes * 0.5)).toLocaleString("es-AR")}
                 </span>
               </div>
+
               <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
                 <div
                   className="h-full bg-rose-500 transition-all"
@@ -270,7 +289,7 @@ const balanceMes = totalIngresosMes - totalGastosMes - totalPendientesMes;
                               (totalIngresosMes * 0.5 || 1) *
                               100,
                             100
-                          ).toFixed(0)}%`
+                          )}%`
                         : "0%",
                   }}
                 />
@@ -278,6 +297,7 @@ const balanceMes = totalIngresosMes - totalGastosMes - totalPendientesMes;
             </div>
           </div>
 
+          {/* AHORRO USD */}
           <div className="glass-card">
             <h3 className="text-lg font-semibold mb-1">
               Ahorro en dólares
@@ -289,28 +309,34 @@ const balanceMes = totalIngresosMes - totalGastosMes - totalPendientesMes;
               USD {totalUSD.toLocaleString("es-AR")}
             </p>
           </div>
-         <div className="grid grid-cols-3 gap-4">
-  <WidgetCosasPorPagar />
-  <WidgetDisponible />
-</div>
 
+          {/* WIDGETS ABAJO */}
+          <div className="grid grid-cols-3 gap-4">
+            <WidgetCosasPorPagar />
+            <WidgetDisponible />
+          </div>
         </div>
       </section>
 
-      {/* FILA 2: IA + finanzas del mes */}
+      {/* ================================================
+          FILA 2: IA + Finanzas del mes
+      ================================================ */}
       <section className="grid gap-6 lg:grid-cols-2">
+        
+        {/* IA */}
         <div className="glass-card">
           <h2 className="text-lg font-semibold mb-3">Cargar con IA</h2>
           <p className="text-sm text-slate-500 mb-4">
-            Escribí un gasto o ingreso en lenguaje natural y lo
-            interpretamos por vos.
+            Escribí un gasto o ingreso y lo interpretamos por vos.
           </p>
+
           <textarea
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             className="w-full h-28 p-4 rounded-2xl border border-slate-200 bg-white/60 focus:bg-white focus:ring-2 focus:ring-blue-400 outline-none text-sm"
-            placeholder='Ej: "Hoy gasté 25.000 en el super" o "Cobré 150.000 de diseño"'
+            placeholder='Ej: "Hoy gasté 25.000 en el super" o "Cobré 150.000 por diseño"'
           />
+
           <button
             onClick={enviarAI}
             disabled={loading}
@@ -318,6 +344,7 @@ const balanceMes = totalIngresosMes - totalGastosMes - totalPendientesMes;
           >
             {loading ? "Procesando..." : "Enviar a la IA"}
           </button>
+
           {respuesta && (
             <div className="mt-4 p-3 rounded-2xl bg-blue-50 border border-blue-200 text-xs font-mono">
               <pre>{JSON.stringify(respuesta, null, 2)}</pre>
@@ -325,16 +352,20 @@ const balanceMes = totalIngresosMes - totalGastosMes - totalPendientesMes;
           )}
         </div>
 
+        {/* Finanzas del mes */}
         <div className="glass-card">
           <FinanzasDelMes ingresos={ingresos} gastos={gastos} />
         </div>
       </section>
 
-      {/* FILA 3: últimos movimientos */}
+      {/* ================================================
+          FILA 3: ÚLTIMOS MOVIMIENTOS
+      ================================================ */}
       <section className="glass-card">
         <h2 className="text-lg font-semibold mb-4">
           Últimos movimientos (vista tarjeta)
         </h2>
+
         <div className="space-y-3">
           {movimientos.length === 0 && (
             <p className="text-sm text-slate-500">
@@ -344,7 +375,10 @@ const balanceMes = totalIngresosMes - totalGastosMes - totalPendientesMes;
 
           {movimientos.map((m) => {
             const monto =
-              m.monto ?? (m as any).arsIngreso ?? (m as any).arsGasto ?? 0;
+              m.monto ??
+              (m as any).arsIngreso ??
+              (m as any).arsGasto ??
+              0;
 
             return (
               <div
@@ -359,9 +393,7 @@ const balanceMes = totalIngresosMes - totalGastosMes - totalPendientesMes;
                   <p className="text-xs uppercase tracking-[0.22em] opacity-80">
                     {m.tipo}
                   </p>
-                  <p className="text-sm font-semibold">
-                    {m.descripcion}
-                  </p>
+                  <p className="text-sm font-semibold">{m.descripcion}</p>
                   <p className="text-[11px] opacity-80 mt-1">
                     {new Date(m.fecha).toLocaleDateString("es-AR", {
                       day: "2-digit",
@@ -369,6 +401,7 @@ const balanceMes = totalIngresosMes - totalGastosMes - totalPendientesMes;
                     })}
                   </p>
                 </div>
+
                 <p className="text-lg font-semibold">
                   {m.tipo === "Ingreso" ? "+" : "-"}$
                   {monto.toLocaleString("es-AR")}
