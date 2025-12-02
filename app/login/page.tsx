@@ -5,14 +5,15 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function LoginPage() {
-  const { loginWithGoogle, loading, user } = useAuth();
+  const { loginWithGoogle, loginLoading, user, loadingUser } = useAuth();
   const router = useRouter();
 
+  // 🔥 Si ya está logueado, lo mandamos al dashboard
   useEffect(() => {
-    if (!loading && user) {
+    if (!loadingUser && user) {
       router.replace("/dashboard");
     }
-  }, [user, loading, router]);
+  }, [user, loadingUser, router]);
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-950 to-black flex items-center justify-center text-slate-50">
@@ -37,10 +38,10 @@ export default function LoginPage() {
 
         <button
           onClick={loginWithGoogle}
-          disabled={loading}
+          disabled={loginLoading}
           className="w-full mt-4 bg-white text-slate-900 hover:bg-slate-100 px-4 py-3 rounded-xl font-medium flex items-center justify-center gap-3 transition-colors"
         >
-          {loading ? (
+          {loginLoading ? (
             "Cargando..."
           ) : (
             <>
