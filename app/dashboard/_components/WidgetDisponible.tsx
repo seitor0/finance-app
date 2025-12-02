@@ -6,15 +6,22 @@ export default function WidgetDisponible() {
   const { dineroDisponible } = useApp();
 
   const color =
-    dineroDisponible >= 0 ? "text-green-600" : "text-red-600";
+    dineroDisponible >= 0 ? "text-emerald-600" : "text-rose-600";
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow w-full flex flex-col items-center">
-      <h2 className="text-lg font-semibold mb-2">Disponible</h2>
+    <div className="p-5 rounded-2xl shadow bg-white">
+      <h3 className="text-md font-semibold text-slate-700 mb-2">
+        Disponible
+      </h3>
 
-      <div className={`text-4xl font-bold ${color}`}>
-        ${Number(dineroDisponible).toLocaleString("es-AR")}
-      </div>
+      <p className={`text-4xl font-bold ${color}`}>
+        {dineroDisponible >= 0 ? "+" : "-"}$
+        {Math.abs(dineroDisponible).toLocaleString("es-AR")}
+      </p>
+
+      <p className="text-xs text-slate-400 mt-1">
+        (Ingresos – Gastos – Pendientes)
+      </p>
     </div>
   );
 }

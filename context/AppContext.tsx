@@ -179,6 +179,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [user, loadingUser]);
 
+  // -------------------------------------------------------
+// CALCULAR DINERO DISPONIBLE AUTOMÁTICAMENTE
+// -------------------------------------------------------
+useEffect(() => {
+  const totalIngresos = ingresos.reduce((acc, i) => acc + (i.monto ?? 0), 0);
+  const totalGastos = gastos.reduce((acc, g) => acc + (g.monto ?? 0), 0);
+
+  // Solo pendientes → status = "falta"
+  const totalPendientes = cosasPorPagar
+    .filter((c) => c.status === "falta")
+    .reduce((acc, c) => acc + (c.monto ?? 0), 0);
+
+  const disponible = totalIngresos - totalGastos - totalPendientes;
+
+  setDineroDisponible(disponible);
+}, [ingresos, gastos, cosasPorPagar]);
+
+
   // -------------------------------------
   // INGRESOS
   // -------------------------------------

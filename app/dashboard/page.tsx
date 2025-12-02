@@ -20,12 +20,24 @@ export default function DashboardPage() {
     ingresos,
     gastos,
     ahorros,
+    cosasPorPagar,
     agregarIngreso,
     agregarGasto,
     agregarAhorro,
     dineroDisponible,
     setDineroDisponible,
   } = useApp();
+
+  // Total de pendientes (cosas por pagar con status = falta)
+const totalPendientesMes = useMemo(
+  () =>
+    cosasPorPagar
+      .filter((c: any) => c.status === "falta")
+      .reduce((acc: number, c: any) => acc + (c.monto ?? 0), 0),
+  [cosasPorPagar]
+);
+
+
 
   const [texto, setTexto] = useState("");
   const [loading, setLoading] = useState(false);
@@ -67,7 +79,11 @@ export default function DashboardPage() {
     [gastos, mesActual, añoActual]
   );
 
-  const balanceMes = totalIngresosMes - totalGastosMes;
+  
+
+// Balance real del mes
+const balanceMes = totalIngresosMes - totalGastosMes - totalPendientesMes;
+
 
   const movimientos: MovimientoUI[] = useMemo(() => {
     const lista: MovimientoUI[] = [
@@ -194,10 +210,11 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <AppleRings
-            ingresosMes={totalIngresosMes}
-            gastosMes={totalGastosMes}
-          />
+        <AppleRings
+  ingresosMes={totalIngresosMes}
+  gastosMes={totalGastosMes}
+  pendientesMes={totalPendientesMes}
+/>
 
           <div className="mt-8">
             <WidgetCosasPorPagar />
