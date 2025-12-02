@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Ingreso, Gasto } from "@/context/AppContext";
+
 import {
   ResponsiveContainer,
   BarChart,
@@ -12,6 +12,19 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+type Ingreso = {
+  id: string;
+  descripcion: string;
+  monto: number;
+  fecha: string;
+};
+
+type Gasto = {
+  id: string;
+  descripcion: string;
+  monto: number;
+  fecha: string;
+};
 
 type Props = {
   ingresos: Ingreso[];
