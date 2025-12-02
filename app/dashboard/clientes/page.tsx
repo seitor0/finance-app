@@ -1,14 +1,24 @@
 "use client";
 
-import { useApp } from "@/context/AppContext";
 import { useState } from "react";
-import "./styles.css";
-import FormularioCliente from "./FormularioCliente";
+import { useApp } from "@/context/AppContext";
+import FormularioCliente from "./FormularioCliente"; 
+import "@/styles/clientes.css";
 
 export default function ClientesPage() {
   const { clientes, agregarCliente, editarCliente, borrarCliente } = useApp();
+
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
+
+  const handleSave = async (data) => {
+    if (editItem) {
+      await editarCliente(editItem.id, data);
+    } else {
+      await agregarCliente(data);
+    }
+    setShowForm(false);
+  };
 
   return (
     <div>
@@ -31,7 +41,7 @@ export default function ClientesPage() {
             <th className="p-3 text-left">Email</th>
             <th className="p-3 text-left">Teléfono</th>
             <th className="p-3 text-left">Notas</th>
-            <th className="p-3 text-left">Acciones</th>
+            <th className="p-3"></th>
           </tr>
         </thead>
 
@@ -41,22 +51,22 @@ export default function ClientesPage() {
               <td className="p-3">{c.nombre}</td>
               <td className="p-3">{c.email}</td>
               <td className="p-3">{c.telefono}</td>
-              <td className="p-3">{c.notas || "-"}</td>
+              <td className="p-3">{c.notas}</td>
 
               <td className="p-3 flex gap-2">
                 <button
+                  className="text-blue-600"
                   onClick={() => {
                     setEditItem(c);
                     setShowForm(true);
                   }}
-                  className="text-blue-600"
                 >
                   Editar
                 </button>
 
                 <button
-                  onClick={() => borrarCliente(c.id)}
                   className="text-red-600"
+                  onClick={() => borrarCliente(c.id)}
                 >
                   Borrar
                 </button>
@@ -68,17 +78,9 @@ export default function ClientesPage() {
 
       {showForm && (
         <FormularioCliente
-          onClose={() => setShowForm(false)}
           editItem={editItem}
-         onSave={(data) => {
-  if (editItem) {
-    editarCliente(editItem.id, data);   // ← AHORA CORRECTO
-  } else {
-    agregarCliente(data);
-  }
-  setShowForm(false);
-}}
-
+          onClose={() => setShowForm(false)}
+          onSave={handleSave}
         />
       )}
     </div>
