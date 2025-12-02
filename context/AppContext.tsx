@@ -53,11 +53,21 @@ export interface Cliente {
   notas?: string;
 }
 
+export interface Ahorro {
+  id: string;
+  usd: number;
+  fecha: string;
+  notas?: string;
+}
+
 interface AppContextType {
   ingresos: Movimiento[];
   gastos: Movimiento[];
   clientes: Cliente[];
   cosasPorPagar: ToPayItem[];
+  ahorros: Ahorro[];
+  dineroDisponible: number;
+  setDineroDisponible: (v: number) => void;
   loadingData: boolean;
 
   agregarCosaPorPagar: (item: Omit<ToPayItem, "id">) => Promise<void>;
@@ -74,6 +84,10 @@ interface AppContextType {
   agregarGasto: (data: Omit<Movimiento, "id">) => Promise<void>;
   editarGasto: (id: string, data: Partial<Movimiento>) => Promise<void>;
   borrarGasto: (id: string) => Promise<void>;
+
+  agregarAhorro: (data: Omit<Ahorro, "id">) => Promise<void>;
+  editarAhorro: (id: string, data: Partial<Ahorro>) => Promise<void>;
+  borrarAhorro: (id: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -89,17 +103,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [gastos, setGastos] = useState<Movimiento[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [cosasPorPagar, setCosasPorPagar] = useState<ToPayItem[]>([]);
+  const [ahorros, setAhorros] = useState<Ahorro[]>([]);
+  const [dineroDisponible, setDineroDisponible] = useState(0);
   const [loadingData, setLoadingData] = useState(true);
 
-  // 🔥 Esperar a que Firebase diga si hay usuario antes de leer Firestore
+  // 🔥 Esperar a Firebase Auth
   useEffect(() => {
-    if (loadingUser) return; // ⛔ Esperar a Firebase Auth
+    if (loadingUser) return;
 
     if (!user) {
       setIngresos([]);
       setGastos([]);
       setClientes([]);
       setCosasPorPagar([]);
+      setAhorros([]);
       setLoadingData(false);
       return;
     }
@@ -143,6 +160,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     );
 
+    const unsubAhorros = onSnapshot(
+      collection(db, "usuarios", uid, "ahorros"),
+      snapshot => {
+        const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Ahorro[];
+        setAhorros(data);
+      }
+    );
+
     setLoadingData(false);
 
     return () => {
@@ -150,6 +175,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       unsubGastos();
       unsubClientes();
       unsubPagar();
+      unsubAhorros();
     };
   }, [user, loadingUser]);
 
@@ -225,7 +251,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const ref = doc(db, "usuarios", user.uid, "cosasPorPagar", id);
     const item = cosasPorPagar.find((i) => i.id === id);
 
-    // Si se paga → guardar también como gasto
+    // Si se paga → guardar como gasto
     if (nuevoEstado === "pagado" && item) {
       await addDoc(collection(db, "usuarios", user.uid, "gastos"), {
         descripcion: item.nombre,
@@ -238,6 +264,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await updateDoc(ref, { status: nuevoEstado });
   }
 
+  // -------------------------------------
+  // AHORROS
+  // -------------------------------------
+
+  async function agregarAhorro(data: Omit<Ahorro, "id">) {
+    if (!user) return;
+    await addDoc(collection(db, "usuarios", user.uid, "ahorros"), data);
+  }
+
+  async function editarAhorro(id: string, data: Partial<Ahorro>) {
+    if (!user) return;
+    await updateDoc(doc(db, "usuarios", user.uid, "ahorros", id), data);
+  }
+
+  async function borrarAhorro(id: string) {
+    if (!user) return;
+    await deleteDoc(doc(db, "usuarios", user.uid, "ahorros", id));
+  }
+
   return (
     <AppContext.Provider
       value={{
@@ -245,6 +290,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         gastos,
         clientes,
         cosasPorPagar,
+        ahorros,
+        dineroDisponible,
+        setDineroDisponible,
         loadingData,
 
         agregarCosaPorPagar,
@@ -261,6 +309,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         agregarGasto,
         editarGasto,
         borrarGasto,
+
+        agregarAhorro,
+        editarAhorro,
+        borrarAhorro,
       }}
     >
       {children}
