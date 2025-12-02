@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import FormularioCliente from "./FormularioCliente"; 
-import "@/styles/clientes.css";
+import "./styles.css";
+
+
+
 
 export default function ClientesPage() {
   const { clientes, agregarCliente, editarCliente, borrarCliente } = useApp();
