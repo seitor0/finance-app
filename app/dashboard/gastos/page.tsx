@@ -66,15 +66,16 @@ export default function GastosPage() {
       </table>
 
       {showForm && (
-        <FormularioGasto
-          editItem={editItem}
-          onClose={() => setShowForm(false)}
-          onSave={(data) => {
-            if (editItem) editarGasto(data);
-            else agregarGasto(data);
-            setShowForm(false);
-          }}
-        />
+<FormularioGasto
+  editItem={editItem}
+  onClose={() => setShowForm(false)}
+  onSave={(data) => {
+    if (editItem) editarGasto(editItem.id, data);   // ✅ AHORA OK
+    else agregarGasto(data);
+    setShowForm(false);
+  }}
+/>
+
       )}
     </div>
   );

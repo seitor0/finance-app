@@ -32,7 +32,7 @@ export interface ToPayItem {
   nombre: string;
   categoria?: string;
   monto: number;
-  vencimiento?: string; // YYYY-MM-DD
+  vencimiento?: string;
   status: PaymentStatus;
   importante?: boolean;
 }
@@ -49,7 +49,7 @@ export interface Cliente {
   nombre: string;
   email: string;
   telefono: string;
-  notas?: string; // ← AGREGADO
+  notas?: string;
 }
 
 interface AppContextType {
@@ -59,14 +59,24 @@ interface AppContextType {
   cosasPorPagar: ToPayItem[];
   loadingData: boolean;
 
-  // Acciones: COSAS POR PAGAR
+  // COSAS POR PAGAR
   agregarCosaPorPagar: (item: Omit<ToPayItem, "id">) => Promise<void>;
   cambiarEstadoPago: (id: string, nuevoEstado: PaymentStatus) => Promise<void>;
 
-  // Acciones: CLIENTES
+  // CLIENTES
   agregarCliente: (data: Omit<Cliente, "id">) => Promise<void>;
   editarCliente: (id: string, data: Partial<Cliente>) => Promise<void>;
   borrarCliente: (id: string) => Promise<void>;
+
+  // INGRESOS
+  agregarIngreso: (data: Omit<Movimiento, "id">) => Promise<void>;
+  editarIngreso: (id: string, data: Partial<Movimiento>) => Promise<void>;
+  borrarIngreso: (id: string) => Promise<void>;
+
+  // GASTOS
+  agregarGasto: (data: Omit<Movimiento, "id">) => Promise<void>;
+  editarGasto: (id: string, data: Partial<Movimiento>) => Promise<void>;
+  borrarGasto: (id: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -74,6 +84,7 @@ const AppContext = createContext<AppContextType | null>(null);
 // -----------------------------------
 // PROVIDER
 // -----------------------------------
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
 
@@ -95,42 +106,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const uid = user.uid;
 
-    // Ingresos
-    const qIngresos = query(
-      collection(db, "usuarios", uid, "ingresos"),
-      orderBy("fecha", "desc")
+    // -------------------------------------
+    // SUSCRIPCIONES
+    // -------------------------------------
+    const unsubIngresos = onSnapshot(
+      query(collection(db, "usuarios", uid, "ingresos"), orderBy("fecha", "desc")),
+      snapshot => setIngresos(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Movimiento[])
     );
-    const unsubIngresos = onSnapshot(qIngresos, (snapshot) => {
-      setIngresos(
-        snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Movimiento[]
-      );
-    });
 
-    // Gastos
-    const qGastos = query(
-      collection(db, "usuarios", uid, "gastos"),
-      orderBy("fecha", "desc")
+    const unsubGastos = onSnapshot(
+      query(collection(db, "usuarios", uid, "gastos"), orderBy("fecha", "desc")),
+      snapshot => setGastos(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Movimiento[])
     );
-    const unsubGastos = onSnapshot(qGastos, (snapshot) => {
-      setGastos(
-        snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Movimiento[]
-      );
-    });
 
-    // Clientes
-    const qClientes = collection(db, "usuarios", uid, "clientes");
-    const unsubClientes = onSnapshot(qClientes, (snapshot) => {
-     setClientes(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Cliente[]);
+    const unsubClientes = onSnapshot(
+      collection(db, "usuarios", uid, "clientes"),
+      snapshot => setClientes(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Cliente[])
+    );
 
-    });
-
-    // Cosas por pagar
-    const qPagar = collection(db, "usuarios", uid, "cosasPorPagar");
-    const unsubPagar = onSnapshot(qPagar, (snapshot) => {
-      setCosasPorPagar(
-        snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as ToPayItem[]
-      );
-    });
+    const unsubPagar = onSnapshot(
+      collection(db, "usuarios", uid, "cosasPorPagar"),
+      snapshot => setCosasPorPagar(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as ToPayItem[])
+    );
 
     setLoadingData(false);
 
@@ -143,15 +140,69 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   // -------------------------------------
+  // INGRESOS
+  // -------------------------------------
+
+  async function agregarIngreso(data: Omit<Movimiento, "id">) {
+    if (!user) return;
+    await addDoc(collection(db, "usuarios", user.uid, "ingresos"), data);
+  }
+
+  async function editarIngreso(id: string, data: Partial<Movimiento>) {
+    if (!user) return;
+    await updateDoc(doc(db, "usuarios", user.uid, "ingresos", id), data);
+  }
+
+  async function borrarIngreso(id: string) {
+    if (!user) return;
+    await deleteDoc(doc(db, "usuarios", user.uid, "ingresos", id));
+  }
+
+  // -------------------------------------
+  // GASTOS
+  // -------------------------------------
+
+  async function agregarGasto(data: Omit<Movimiento, "id">) {
+    if (!user) return;
+    await addDoc(collection(db, "usuarios", user.uid, "gastos"), data);
+  }
+
+  async function editarGasto(id: string, data: Partial<Movimiento>) {
+    if (!user) return;
+    await updateDoc(doc(db, "usuarios", user.uid, "gastos", id), data);
+  }
+
+  async function borrarGasto(id: string) {
+    if (!user) return;
+    await deleteDoc(doc(db, "usuarios", user.uid, "gastos", id));
+  }
+
+  // -------------------------------------
+  // CLIENTES
+  // -------------------------------------
+
+  async function agregarCliente(data: Omit<Cliente, "id">) {
+    if (!user) return;
+    await addDoc(collection(db, "usuarios", user.uid, "clientes"), data);
+  }
+
+  async function editarCliente(id: string, data: Partial<Cliente>) {
+    if (!user) return;
+    await updateDoc(doc(db, "usuarios", user.uid, "clientes", id), data);
+  }
+
+  async function borrarCliente(id: string) {
+    if (!user) return;
+    await deleteDoc(doc(db, "usuarios", user.uid, "clientes", id));
+  }
+
+  // -------------------------------------
   // COSAS POR PAGAR
   // -------------------------------------
+
   async function agregarCosaPorPagar(item: Omit<ToPayItem, "id">) {
     if (!user) return;
-
-    await addDoc(
-      collection(db, "usuarios", user.uid, "cosasPorPagar"),
-      item
-    );
+    await addDoc(collection(db, "usuarios", user.uid, "cosasPorPagar"), item);
   }
 
   async function cambiarEstadoPago(id: string, nuevoEstado: PaymentStatus) {
@@ -173,29 +224,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await updateDoc(ref, { status: nuevoEstado });
   }
 
-  // -------------------------------------
-  // CLIENTES
-  // -------------------------------------
-  async function agregarCliente(data: Omit<Cliente, "id">) {
-    if (!user) return;
-
-    await addDoc(collection(db, "usuarios", user.uid, "clientes"), data);
-  }
-
-  async function editarCliente(id: string, data: Partial<Cliente>) {
-    if (!user) return;
-
-    const ref = doc(db, "usuarios", user.uid, "clientes", id);
-    await updateDoc(ref, data);
-  }
-
-  async function borrarCliente(id: string) {
-    if (!user) return;
-
-    const ref = doc(db, "usuarios", user.uid, "clientes", id);
-    await deleteDoc(ref);
-  }
-
   return (
     <AppContext.Provider
       value={{
@@ -204,11 +232,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         clientes,
         cosasPorPagar,
         loadingData,
+
         agregarCosaPorPagar,
         cambiarEstadoPago,
+
         agregarCliente,
         editarCliente,
         borrarCliente,
+
+        agregarIngreso,
+        editarIngreso,
+        borrarIngreso,
+
+        agregarGasto,
+        editarGasto,
+        borrarGasto,
       }}
     >
       {children}
