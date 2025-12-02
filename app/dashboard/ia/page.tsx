@@ -28,9 +28,10 @@ export default function IAInputPage() {
 
       if (data.tipo === "ingreso") {
         agregarIngreso({
-          descripcion: data.descripcion,
-          monto: data.monto,
-          fecha: data.fecha,
+        descripcion: data.descripcion,
+  monto: data.monto,
+  categoria: data.categoria,
+  fecha: data.fecha,
         });
       } else if (data.tipo === "gasto") {
         agregarGasto({

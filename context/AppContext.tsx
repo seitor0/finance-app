@@ -42,6 +42,7 @@ export interface Movimiento {
   descripcion: string;
   monto: number;
   fecha: string;
+   categoria?: string; 
 }
 
 export interface Cliente {

@@ -2,16 +2,31 @@
 
 import { useState, useEffect } from "react";
 
+const CATEGORIAS = [
+  "Comida",
+  "Supermercado",
+  "Transporte",
+  "Servicios",
+  "Hogar",
+  "Salud",
+  "Educación",
+  "Impuestos",
+  "Ocio",
+  "Otros",
+];
+
 export default function Formulariogasto({ onClose, onSave, editItem }) {
   const [descripcion, setDescripcion] = useState("");
   const [monto, setMonto] = useState("");
   const [fecha, setFecha] = useState("");
+  const [categoria, setCategoria] = useState("");
 
   useEffect(() => {
     if (editItem) {
       setDescripcion(editItem.descripcion);
       setMonto(editItem.monto);
       setFecha(editItem.fecha);
+      setCategoria(editItem.categoria || "");
     }
   }, [editItem]);
 
@@ -19,10 +34,10 @@ export default function Formulariogasto({ onClose, onSave, editItem }) {
     e.preventDefault();
 
     const data = {
-      id: editItem?.id || Date.now(),
       descripcion,
       monto: Number(monto),
       fecha,
+      categoria, // ← AHORA SE ENVÍA CORRECTAMENTE
     };
 
     onSave(data);
@@ -41,6 +56,7 @@ export default function Formulariogasto({ onClose, onSave, editItem }) {
             className="border p-2 w-full"
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
+            required
           />
         </label>
 
@@ -51,7 +67,25 @@ export default function Formulariogasto({ onClose, onSave, editItem }) {
             type="number"
             value={monto}
             onChange={(e) => setMonto(e.target.value)}
+            required
           />
+        </label>
+
+        <label className="block mb-2">
+          Categoría
+          <select
+            className="border p-2 w-full"
+            value={categoria}
+            onChange={(e) => setCategoria(e.target.value)}
+            required
+          >
+            <option value="">Seleccionar...</option>
+            {CATEGORIAS.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="block mb-4">
@@ -61,6 +95,7 @@ export default function Formulariogasto({ onClose, onSave, editItem }) {
             type="date"
             value={fecha}
             onChange={(e) => setFecha(e.target.value)}
+            required
           />
         </label>
 
