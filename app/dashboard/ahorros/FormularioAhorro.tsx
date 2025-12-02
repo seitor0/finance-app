@@ -1,100 +1,81 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useApp } from "@/context/AppContext";
 
-export default function FormularioAhorro({ onClose, editItem }) {
-  const { agregarAhorro, editarAhorro } = useApp();
+type Props = {
+  onClose: () => void;
+  onSuccess: () => void;
+};
 
-  const [usd, setUsd] = useState("");
-  const [fecha, setFecha] = useState("");
-  const [notas, setNotas] = useState("");
+export default function FormularioAhorro({ onClose, onSuccess }: Props) {
+  const { agregarAhorro } = useApp();
 
-  useEffect(() => {
-    if (editItem) {
-      setUsd(editItem.usd);
-      setFecha(editItem.fecha);
-      setNotas(editItem.notas || "");
-    } else {
-      setFecha(new Date().toISOString().split("T")[0]);
+  const [usd, setUsd] = useState<number>(0);
+  const [nota, setNota] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function guardar() {
+    if (!usd || usd <= 0) return;
+
+    setLoading(true);
+    try {
+      await agregarAhorro({
+        usd,
+        fecha: new Date().toISOString().split("T")[0],
+        notas: nota || "Ahorro manual",
+      });
+
+      onSuccess();
+    } catch (err) {
+      console.error("Error guardando ahorro:", err);
+    } finally {
+      setLoading(false);
     }
-  }, [editItem]);
-
-  const guardar = async (e) => {
-    e.preventDefault();
-
-    const data = {
-      usd: Number(usd),
-      fecha,
-      notas,
-    };
-
-    if (editItem) {
-      await editarAhorro(editItem.id, data);
-    } else {
-      await agregarAhorro(data);
-    }
-
-    onClose();
-  };
+  }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
-      <form
-        onSubmit={guardar}
-        className="bg-white p-6 rounded-2xl w-96 shadow-xl"
-      >
-        <h2 className="text-xl font-semibold mb-4">
-          {editItem ? "Editar ahorro" : "Nuevo ahorro"}
-        </h2>
+    <div className="space-y-4 text-sm">
+      <h3 className="text-lg font-semibold">Registrar ahorro</h3>
 
-        <label className="block mb-2 text-sm">
-          Monto en USD
-          <input
-            type="number"
-            value={usd}
-            onChange={(e) => setUsd(e.target.value)}
-            className="border p-2 rounded w-full"
-            required
-          />
-        </label>
+      <div className="flex flex-col gap-1">
+        <label className="text-slate-600">Monto en USD</label>
+        <input
+          type="number"
+          value={usd}
+          onChange={(e) => setUsd(Number(e.target.value))}
+          className="border p-2 rounded-xl bg-white/60 focus:bg-white"
+          placeholder="Ej: 200"
+        />
+      </div>
 
-        <label className="block mb-2 text-sm">
-          Fecha
-          <input
-            type="date"
-            value={fecha}
-            onChange={(e) => setFecha(e.target.value)}
-            className="border p-2 rounded w-full"
-          />
-        </label>
+      <div className="flex flex-col gap-1">
+        <label className="text-slate-600">Notas (opcional)</label>
+        <input
+          type="text"
+          value={nota}
+          onChange={(e) => setNota(e.target.value)}
+          className="border p-2 rounded-xl bg-white/60 focus:bg-white"
+          placeholder="Ej: Ahorro extra"
+        />
+      </div>
 
-        <label className="block mb-4 text-sm">
-          Notas (opcional)
-          <textarea
-            value={notas}
-            onChange={(e) => setNotas(e.target.value)}
-            className="border p-2 rounded w-full"
-            rows={2}
-          />
-        </label>
+      <div className="flex gap-2 mt-4">
+        <button
+          onClick={guardar}
+          disabled={loading || usd <= 0}
+          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-xl disabled:opacity-50"
+        >
+          {loading ? "Guardando..." : "Guardar ahorro"}
+        </button>
 
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-3 py-1 bg-gray-200 rounded"
-          >
-            Cancelar
-          </button>
-          <button
-            className="px-3 py-1 bg-blue-600 text-white rounded"
-            type="submit"
-          >
-            Guardar
-          </button>
-        </div>
-      </form>
+        <button
+          onClick={onClose}
+          className="flex-1 bg-slate-300 hover:bg-slate-400 text-slate-800 py-2 rounded-xl"
+        >
+          Cancelar
+        </button>
+      </div>
     </div>
   );
 }

@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from "react";
 import { useApp } from "@/context/AppContext";
+
 import AppleRings from "./_components/AppleRings";
 import FinanzasDelMes from "./_components/FinanzasDelMes";
 import WidgetCosasPorPagar from "./_components/WidgetCosasPorPagar";
 import FormularioAhorro from "./ahorros/FormularioAhorro";
-
 
 type MovimientoUI = {
   id: string;
@@ -20,6 +20,7 @@ export default function DashboardPage() {
   const {
     ingresos,
     gastos,
+    ahorros,
     agregarIngreso,
     agregarGasto,
     agregarAhorro,
@@ -30,6 +31,8 @@ export default function DashboardPage() {
   const [texto, setTexto] = useState("");
   const [loading, setLoading] = useState(false);
   const [respuesta, setRespuesta] = useState<any>(null);
+
+  const [showAhorro, setShowAhorro] = useState(false); // ✔ nuevo
 
   const ahora = new Date();
   const mesActual = ahora.getMonth();
@@ -68,6 +71,9 @@ export default function DashboardPage() {
       .slice(0, 5);
   }, [ingresos, gastos]);
 
+  // ========================
+  // IA INPUT
+  // ========================
   async function enviarAI() {
     if (!texto.trim()) return;
     setLoading(true);
@@ -102,7 +108,7 @@ export default function DashboardPage() {
         agregarAhorro({
           usd: json.usd,
           fecha: json.fecha,
-          notas: "Ahorro por IA",
+          notas: "Ahorro IA",
         });
       }
 
@@ -110,9 +116,8 @@ export default function DashboardPage() {
         agregarAhorro({
           usd: json.usd,
           fecha: json.fecha,
-          notas: "Compra de dólares",
+          notas: "Compra USD",
         });
-
         setDineroDisponible(dineroDisponible - json.arsGasto);
       }
 
@@ -120,9 +125,8 @@ export default function DashboardPage() {
         agregarAhorro({
           usd: -json.usd,
           fecha: json.fecha,
-          notas: "Venta de dólares",
+          notas: "Venta USD",
         });
-
         setDineroDisponible(dineroDisponible + json.arsIngreso);
       }
     } catch (e) {
@@ -137,19 +141,18 @@ export default function DashboardPage() {
     <div className="space-y-8 fade-up">
 
       {/* FILA 1 */}
-      <section className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)]">
+      <section className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
 
+        {/* BALANCE */}
         <div className="glass-card col-span-2">
           <div className="flex items-start justify-between mb-6">
             <div>
               <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                 Este mes
               </p>
-
               <h2 className="text-2xl font-semibold tracking-tight mt-1">
                 Balance general
               </h2>
-
               <p className="text-sm text-slate-500 mt-1">
                 Ingresos, gastos y ahorro actual.
               </p>
@@ -157,7 +160,6 @@ export default function DashboardPage() {
 
             <div className="text-right">
               <p className="text-xs text-slate-400">Balance</p>
-
               <p
                 className={`text-3xl font-semibold ${
                   balanceMes >= 0 ? "text-emerald-600" : "text-rose-600"
@@ -171,11 +173,12 @@ export default function DashboardPage() {
 
           <AppleRings ingresosMes={totalIngresosMes} gastosMes={totalGastosMes} />
 
-          <div className="mt-8">
+          <div className="mt-6">
             <WidgetCosasPorPagar />
           </div>
         </div>
 
+        {/* OBJETIVOS */}
         <div className="glass-card">
           <h3 className="text-lg font-semibold mb-4">Objetivos del mes</h3>
 
@@ -186,48 +189,25 @@ export default function DashboardPage() {
                 ${Math.round(totalIngresosMes * 0.2).toLocaleString("es-AR")}
               </span>
             </div>
-
-            <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
-              <div
-                className="h-full bg-emerald-500"
-                style={{
-                  width:
-                    totalIngresosMes > 0
-                      ? `${Math.min(
-                          Math.max(balanceMes, 0) /
-                            (totalIngresosMes * 0.2 || 1) *
-                            100,
-                          100
-                        )}%`
-                      : "0%",
-                }}
-              />
-            </div>
-
-            <div className="flex items-center justify-between mt-4">
-              <span>Gasto ideal</span>
-              <span className="font-semibold">
-                ${Math.round(totalIngresosMes * 0.5).toLocaleString("es-AR")}
-              </span>
-            </div>
-
-            <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
-              <div
-                className="h-full bg-rose-500"
-                style={{
-                  width:
-                    totalIngresosMes > 0
-                      ? `${Math.min(
-                          totalGastosMes / (totalIngresosMes * 0.5 || 1) * 100,
-                          100
-                        )}%`
-                      : "0%",
-                }}
-              />
-            </div>
           </div>
+
+          <button
+            className="mt-4 w-full text-sm bg-slate-900 text-white py-2 rounded-xl"
+            onClick={() => setShowAhorro(true)}
+          >
+            Registrar ahorro rápido
+          </button>
         </div>
 
+        {/* AHORRO RÁPIDO */}
+        {showAhorro && (
+          <div className="glass-card">
+            <FormularioAhorro
+              onClose={() => setShowAhorro(false)}
+              onSuccess={() => setShowAhorro(false)}
+            />
+          </div>
+        )}
       </section>
 
       {/* FILA 2 */}
@@ -235,27 +215,22 @@ export default function DashboardPage() {
         <div className="glass-card">
           <h2 className="text-lg font-semibold mb-3">Cargar con IA</h2>
 
-          <p className="text-sm text-slate-500 mb-4">
-            Escribí un gasto o ingreso en lenguaje natural y lo interpretamos por vos.
-          </p>
-
           <textarea
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
-            className="w-full h-28 p-4 rounded-2xl border border-slate-200 bg-white/60 focus:bg-white focus:ring-2 focus:ring-blue-400 outline-none text-sm"
-            placeholder='Ej: "Hoy gasté 25.000 en el super" o "Cobré 150.000 de diseño"'
+            className="w-full h-28 p-4 rounded-2xl border bg-white"
           />
 
           <button
             onClick={enviarAI}
             disabled={loading}
-            className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-2xl font-medium disabled:opacity-60"
+            className="mt-4 w-full bg-blue-600 text-white py-3 rounded-2xl"
           >
             {loading ? "Procesando..." : "Enviar a la IA"}
           </button>
 
           {respuesta && (
-            <div className="mt-4 p-3 rounded-2xl bg-blue-50 border border-blue-200 text-xs font-mono">
+            <div className="mt-4 p-3 bg-blue-50 border rounded-xl text-xs font-mono">
               <pre>{JSON.stringify(respuesta, null, 2)}</pre>
             </div>
           )}
@@ -269,7 +244,7 @@ export default function DashboardPage() {
       {/* FILA 3 */}
       <section className="glass-card">
         <h2 className="text-lg font-semibold mb-4">
-          Últimos movimientos (vista tarjeta)
+          Últimos movimientos
         </h2>
 
         <div className="space-y-3">
@@ -282,24 +257,17 @@ export default function DashboardPage() {
           {movimientos.map((m) => (
             <div
               key={m.id}
-              className={`relative overflow-hidden rounded-2xl p-4 flex items-center justify-between bg-gradient-to-r ${
+              className={`relative rounded-2xl p-4 flex justify-between text-white ${
                 m.tipo === "Ingreso"
-                  ? "from-emerald-500/80 via-emerald-400/80 to-emerald-500/80"
-                  : "from-rose-500/80 via-rose-400/80 to-rose-500/80"
-              } text-white shadow-md`}
+                  ? "bg-emerald-500"
+                  : "bg-rose-500"
+              }`}
             >
               <div>
-                <p className="text-xs uppercase tracking-[0.22em] opacity-80">
-                  {m.tipo}
-                </p>
-
+                <p className="text-xs uppercase opacity-80">{m.tipo}</p>
                 <p className="text-sm font-semibold">{m.descripcion}</p>
-
-                <p className="text-[11px] opacity-80 mt-1">
-                  {new Date(m.fecha).toLocaleDateString("es-AR", {
-                    day: "2-digit",
-                    month: "short",
-                  })}
+                <p className="text-[11px] opacity-80">
+                  {new Date(m.fecha).toLocaleDateString("es-AR")}
                 </p>
               </div>
 
@@ -311,7 +279,6 @@ export default function DashboardPage() {
           ))}
         </div>
       </section>
-
     </div>
   );
 }

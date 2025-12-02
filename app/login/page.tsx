@@ -8,7 +8,7 @@ export default function LoginPage() {
   const { loginWithGoogle, loginLoading, user, loadingUser } = useAuth();
   const router = useRouter();
 
-  // 🔥 Si ya está logueado, lo mandamos al dashboard
+  // 🔐 Si Firebase dice "ya hay usuario", no mostramos login
   useEffect(() => {
     if (!loadingUser && user) {
       router.replace("/dashboard");
@@ -17,12 +17,10 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-950 to-black flex items-center justify-center text-slate-50">
-      {/* blobs de color tipo macOS */}
       <div className="pointer-events-none absolute -left-32 -top-32 w-80 h-80 bg-purple-500/40 blur-3xl rounded-full" />
       <div className="pointer-events-none absolute -right-24 -bottom-24 w-80 h-80 bg-blue-500/30 blur-3xl rounded-full" />
       <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-emerald-500/10 blur-3xl rounded-full" />
 
-      {/* tarjeta central */}
       <div className="relative glass-card max-w-md w-full bg-white/10 border border-white/25 text-slate-50 fade-up">
         <div className="mb-6">
           <p className="text-xs uppercase tracking-[0.25em] text-slate-300 mb-2">
