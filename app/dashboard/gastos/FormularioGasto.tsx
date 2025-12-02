@@ -1,26 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const CATEGORIAS = [
   "Comida",
   "Supermercado",
   "Transporte",
+  "Auto / Cochera / Nafta",
   "Servicios",
   "Hogar",
   "Salud",
   "Educación",
-  "Impuestos",
+  "Impuestos / AFIP",
   "Ocio",
+  "Mascotas",
+  "Compras",
   "Otros",
 ];
 
-export default function Formulariogasto({ onClose, onSave, editItem }) {
+export default function FormularioGasto({ onClose, onSave, editItem }) {
   const [descripcion, setDescripcion] = useState("");
   const [monto, setMonto] = useState("");
   const [fecha, setFecha] = useState("");
   const [categoria, setCategoria] = useState("");
 
+  // ==========================
+  // Cargar datos al editar
+  // ==========================
   useEffect(() => {
     if (editItem) {
       setDescripcion(editItem.descripcion);
@@ -30,89 +36,134 @@ export default function Formulariogasto({ onClose, onSave, editItem }) {
     }
   }, [editItem]);
 
+  // ==========================
+  // Normalizador de texto
+  // ==========================
+  function normalizarTexto(str) {
+    return (str || "")
+      .toLowerCase()
+      .replace(/hoy|ayer|gaste|gasté|compré|pagué|saqué|me salió/gi, "")
+      .trim();
+  }
+
+  // ==========================
+  // IA: Categorizar automáticamente
+  // ==========================
+  async function categorizarAutomaticamente(texto) {
+    if (!texto || texto.length < 3) return;
+
+    const limpio = normalizarTexto(texto);
+
+    const prompt = `
+Sos un asistente experto en finanzas personales de Argentina.
+Tu tarea es analizar un gasto y responder SOLO con la categoría correcta.
+
+Categorías permitidas:
+${CATEGORIAS.join(", ")}
+
+Reglas:
+- Respondé SOLO con la categoría exacta.
+- No agregues explicaciones.
+- Si no estás seguro, devolvé "Otros".
+
+Texto: "${limpio}"
+`;
+
+    try {
+      const resp = await fetch("/api/ia-categorizar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+
+      const json = await resp.json();
+      if (json.categoria) {
+        setCategoria(json.categoria);
+      }
+    } catch (e) {
+      console.error("Error IA:", e);
+    }
+  }
+
+  // Detectar categoría cuando el usuario escribe
+  useEffect(() => {
+    if (!editItem) categorizarAutomaticamente(descripcion);
+  }, [descripcion]);
+
+  // ==========================
+  // Submit
+  // ==========================
   const submit = (e) => {
     e.preventDefault();
 
-    const data = {
+    onSave({
       descripcion,
-      monto: Number(monto),
+      monto,
       fecha,
-      categoria, // ← AHORA SE ENVÍA CORRECTAMENTE
-    };
-
-    onSave(data);
+      categoria: categoria || "Otros",
+    });
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
-      <form onSubmit={submit} className="bg-white p-6 rounded shadow w-96">
-        <h2 className="text-xl font-bold mb-4">
+    <div className="modal">
+      <form onSubmit={submit} className="bg-white p-5 rounded shadow-md">
+
+        <h2 className="text-2xl font-semibold mb-4">
           {editItem ? "Editar gasto" : "Nuevo gasto"}
         </h2>
 
-        <label className="block mb-2">
-          Descripción
-          <input
-            className="border p-2 w-full"
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            required
-          />
-        </label>
+        {/* Descripción */}
+        <label>Descripción</label>
+        <input
+          className="input"
+          value={descripcion}
+          onChange={(e) => setDescripcion(e.target.value)}
+          required
+        />
 
-        <label className="block mb-2">
-          Monto
-          <input
-            className="border p-2 w-full"
-            type="number"
-            value={monto}
-            onChange={(e) => setMonto(e.target.value)}
-            required
-          />
-        </label>
+        {/* Monto */}
+        <label>Monto</label>
+        <input
+          className="input"
+          type="number"
+          value={monto}
+          onChange={(e) => setMonto(e.target.value)}
+          required
+        />
 
-        <label className="block mb-2">
-          Categoría
-          <select
-            className="border p-2 w-full"
-            value={categoria}
-            onChange={(e) => setCategoria(e.target.value)}
-            required
-          >
-            <option value="">Seleccionar...</option>
-            {CATEGORIAS.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
+        {/* Fecha */}
+        <label>Fecha</label>
+        <input
+          className="input"
+          type="date"
+          value={fecha}
+          onChange={(e) => setFecha(e.target.value)}
+          required
+        />
 
-        <label className="block mb-4">
-          Fecha
-          <input
-            className="border p-2 w-full"
-            type="date"
-            value={fecha}
-            onChange={(e) => setFecha(e.target.value)}
-            required
-          />
-        </label>
+        {/* Categoría */}
+        <label>Categoría</label>
+        <select
+          className="input"
+          value={categoria}
+          onChange={(e) => setCategoria(e.target.value)}
+        >
+          {CATEGORIAS.map((c) => (
+            <option key={c}>{c}</option>
+          ))}
+        </select>
 
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-3 py-1 bg-gray-300 rounded"
-          >
-            Cancelar
+        <div className="flex gap-3 mt-5">
+          <button className="bg-blue-600 text-white px-4 py-2 rounded">
+            Guardar
           </button>
 
           <button
-            type="submit"
-            className="px-3 py-1 bg-blue-600 text-white rounded"
+            type="button"
+            className="bg-gray-300 px-4 py-2 rounded"
+            onClick={onClose}
           >
-            Guardar
+            Cancelar
           </button>
         </div>
       </form>

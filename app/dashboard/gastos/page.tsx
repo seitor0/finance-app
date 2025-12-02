@@ -5,7 +5,6 @@ import { useState } from "react";
 import FormularioGasto from "./FormularioGasto";
 import "@/styles/gastos.css";
 
-
 export default function GastosPage() {
   const { gastos, agregarGasto, editarGasto, borrarGasto } = useApp();
   const [showForm, setShowForm] = useState(false);
@@ -25,24 +24,42 @@ export default function GastosPage() {
         + Agregar gasto
       </button>
 
+      {/* ======= TABLA ======= */}
       <table className="min-w-full bg-white shadow rounded">
         <thead>
-          <tr className="border-b">
+          <tr className="border-b bg-gray-50">
             <th className="p-3 text-left">Fecha</th>
+            <th className="p-3 text-left">Categoría</th>
             <th className="p-3 text-left">Descripción</th>
             <th className="p-3 text-left">Monto</th>
-            <th className="p-3"></th>
+            <th className="p-3 text-left"></th>
           </tr>
         </thead>
 
         <tbody>
           {gastos.map((g) => (
             <tr key={g.id} className="border-b">
+              
+              {/* FECHA */}
               <td className="p-3">{g.fecha}</td>
-              <td className="p-3">{g.descripcion}</td>
-              <td className="p-3">${g.monto}</td>
 
-              <td className="p-3 flex gap-2">
+              {/* CATEGORÍA */}
+              <td className="p-3 font-medium text-gray-700">
+                {g.categoria || "—"}
+              </td>
+
+              {/* DESCRIPCIÓN */}
+              <td className="p-3">{g.descripcion}</td>
+
+              {/* MONTO */}
+              <td className="p-3">
+                {g.monto
+                  ? `$${Number(g.monto).toLocaleString("es-AR")}`
+                  : "$0"}
+              </td>
+
+              {/* ACCIONES */}
+              <td className="p-3 flex gap-3">
                 <button
                   className="text-blue-600"
                   onClick={() => {
@@ -60,22 +77,26 @@ export default function GastosPage() {
                   Borrar
                 </button>
               </td>
+
             </tr>
           ))}
         </tbody>
       </table>
 
+      {/* ======= MODAL FORM ======= */}
       {showForm && (
-<FormularioGasto
-  editItem={editItem}
-  onClose={() => setShowForm(false)}
-  onSave={(data) => {
-    if (editItem) editarGasto(editItem.id, data);   // ✅ AHORA OK
-    else agregarGasto(data);
-    setShowForm(false);
-  }}
-/>
-
+        <FormularioGasto
+          editItem={editItem}
+          onClose={() => setShowForm(false)}
+          onSave={(data) => {
+            if (editItem) {
+              editarGasto(editItem.id, data);
+            } else {
+              agregarGasto(data);
+            }
+            setShowForm(false);
+          }}
+        />
       )}
     </div>
   );
