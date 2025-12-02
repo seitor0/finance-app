@@ -1,19 +1,21 @@
 // lib/firebase.ts
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 // 🔥 Configuración de tu proyecto Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyCbd-IqotK2Gm6RM7rGMbCKucC-3hz9Wog",
-  authDomain: "finance-app-8b67c.firebaseapp.com",
-  projectId: "finance-app-8b67c",
-  storageBucket: "finance-app-8b67c.firebasestorage.app",
-  messagingSenderId: "57434903644",
-  appId: "1:57434903644:web:51c4a83c9b95fc396e8299"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
 };
 
-// Inicializamos Firebase
+// Inicializamos Firebase (solo una vez)
 const app = initializeApp(firebaseConfig);
 
-// Exportamos Firestore para usar en toda tu app
+// Exportaciones globales que usa TODA tu app
 export const db = getFirestore(app);
+export const auth = getAuth(app);
