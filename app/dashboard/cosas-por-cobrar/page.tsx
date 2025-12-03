@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import FormPorCobrar from "./FormPorCobrar";
-import type { ToCollectItem } from "@/context/AppContext";
+
+import type { ToCollectItem, CobroStatus } from "@/context/AppContext";
+
 
 const ESTADOS = [
   { value: "terminado", label: "Terminado" },
@@ -61,18 +63,15 @@ export default function CosasPorCobrarPage() {
   // ---------------------------
   // CAMBIAR ESTADO DESDE EL SELECT
   // ---------------------------
-  async function handleChangeStatus(item: ToCollectItem, nuevoEstado: string) {
-    if (nuevoEstado === "cobrado") {
-      const confirmar = confirm(
-        `¿Confirmás que este cobro (${item.nombre}) ya fue COBRADO? Esto lo moverá a tus ingresos.`
-      );
-      if (!confirmar) return;
-
-      await marcarCobroComoCobrado(item);
-    } else {
-      await editarCosaPorCobrar(item.id, { status: nuevoEstado });
-    }
+async function handleChangeStatus(item: ToCollectItem, nuevoEstado: string) {
+  if (nuevoEstado === "cobrado") {
+    await marcarCobroComoCobrado(item);
+  } else {
+    await editarCosaPorCobrar(item.id, { status: nuevoEstado as CobroStatus });
   }
+}
+
+
 
   return (
     <div className="space-y-6 fade-up">
