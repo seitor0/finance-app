@@ -36,6 +36,19 @@ export interface ToPayItem {
   importante?: boolean;
 }
 
+// ----- NUEVO: COSAS POR COBRAR -----
+export type CobroStatus = "terminado" | "facturado" | "cobrado";
+
+export interface ToCollectItem {
+  id: string;
+  nombre: string;
+  categoria?: string;
+  monto: number;
+  vencimiento?: string;
+  status: CobroStatus;
+  importante?: boolean;
+}
+
 export interface Movimiento {
   id: string;
   descripcion: string;
@@ -63,6 +76,7 @@ interface AppContextType {
   ingresos: Movimiento[];
   gastos: Movimiento[];
   cosasPorPagar: ToPayItem[];
+  cosasPorCobrar: ToCollectItem[];   // 👈 nuevo
   clientes: Cliente[];
   ahorros: Ahorro[];
 
@@ -81,6 +95,12 @@ interface AppContextType {
   agregarCosaPorPagar: (d: Omit<ToPayItem, "id">) => Promise<void>;
   editarCosaPorPagar: (id: string, d: Partial<ToPayItem>) => Promise<void>;
   cambiarEstadoPago: (id: string, estado: PaymentStatus) => Promise<void>;
+
+  // NUEVOS CRUD COBROS
+  agregarCosaPorCobrar: (d: Omit<ToCollectItem, "id">) => Promise<void>;
+  editarCosaPorCobrar: (id: string, d: Partial<ToCollectItem>) => Promise<void>;
+  borrarCosaPorCobrar: (id: string) => Promise<void>;
+  marcarCobroComoCobrado: (item: ToCollectItem) => Promise<void>;
 
   agregarCliente: (d: Omit<Cliente, "id">) => Promise<void>;
   editarCliente: (id: string, d: Partial<Cliente>) => Promise<void>;
@@ -108,6 +128,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [gastos, setGastos] = useState<Movimiento[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [cosasPorPagar, setCosasPorPagar] = useState<ToPayItem[]>([]);
+  const [cosasPorCobrar, setCosasPorCobrar] = useState<ToCollectItem[]>([]); // 👈 nuevo
   const [ahorros, setAhorros] = useState<Ahorro[]>([]);
   const [dineroDisponible, setDineroDisponible] = useState(0);
   const [balanceReal, setBalanceReal] = useState(0);
@@ -122,6 +143,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setGastos([]);
       setClientes([]);
       setCosasPorPagar([]);
+      setCosasPorCobrar([]);
       setAhorros([]);
       setDineroDisponible(0);
       setBalanceReal(0);
@@ -152,6 +174,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       (snap) => setCosasPorPagar(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as ToPayItem[])
     );
 
+    const unsubCobrar = onSnapshot(
+      collection(db, "usuarios", uid, "cosasPorCobrar"),
+      (snap) => setCosasPorCobrar(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as ToCollectItem[])
+    );
+
     const unsubAhorros = onSnapshot(
       collection(db, "usuarios", uid, "ahorros"),
       (snap) => setAhorros(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Ahorro[])
@@ -164,6 +191,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       unsubGastos();
       unsubClientes();
       unsubPagar();
+      unsubCobrar();
       unsubAhorros();
     };
   }, [user, loadingUser]);
@@ -172,6 +200,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const totalIngresos = ingresos.reduce((a, i) => a + toNumber(i.monto), 0);
     const totalGastos = gastos.reduce((a, g) => a + toNumber(g.monto), 0);
+
     const totalPendientes = cosasPorPagar
       .filter((c) => c.status === "falta" || c.status === "pospuesto")
       .reduce((a, c) => a + toNumber(c.monto), 0);
@@ -180,7 +209,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setBalanceReal(totalIngresos - totalGastos - totalPendientes);
   }, [ingresos, gastos, cosasPorPagar]);
 
-  // ---------- CRUD ----------
+  // ---------- CRUD INGRESOS / GASTOS ----------
   async function agregarIngreso(data: Omit<Movimiento, "id">) {
     if (!user) return;
     await addDoc(collection(db, "usuarios", user.uid, "ingresos"), {
@@ -247,10 +276,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
         monto: toNumber(item.monto),
         fecha: new Date().toISOString().split("T")[0],
       });
-      await deleteDoc(ref); // se elimina de cosasPorPagar
+      await deleteDoc(ref);
     } else {
       await updateDoc(ref, { status: nuevoEstado });
     }
+  }
+
+  // ---------- NUEVO: COSAS POR COBRAR ----------
+  async function agregarCosaPorCobrar(data: Omit<ToCollectItem, "id">) {
+    if (!user) return;
+    await addDoc(collection(db, "usuarios", user.uid, "cosasPorCobrar"), {
+      ...data,
+      monto: toNumber(data.monto),
+    });
+  }
+
+  async function editarCosaPorCobrar(id: string, d: Partial<ToCollectItem>) {
+    if (!user) return;
+    const ref = doc(db, "usuarios", user.uid, "cosasPorCobrar", id);
+    await updateDoc(ref, d);
+  }
+
+  async function borrarCosaPorCobrar(id: string) {
+    if (!user) return;
+    await deleteDoc(doc(db, "usuarios", user.uid, "cosasPorCobrar", id));
+  }
+
+  // ----- PASAR A “COBRADO” → CREA INGRESO -----
+  async function marcarCobroComoCobrado(item: ToCollectItem) {
+    if (!user) return;
+
+    const hoy = new Date().toISOString().slice(0, 10);
+
+    await addDoc(collection(db, "usuarios", user.uid, "ingresos"), {
+      descripcion: item.nombre,
+      monto: toNumber(item.monto),
+      fecha: hoy,
+      categoria: "Cobros",
+    });
+
+    await deleteDoc(doc(db, "usuarios", user.uid, "cosasPorCobrar", item.id));
   }
 
   // ---------- CLIENTES ----------
@@ -292,22 +357,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
         gastos,
         clientes,
         cosasPorPagar,
+        cosasPorCobrar,     // 👈 nuevo
         ahorros,
         dineroDisponible,
         balanceReal,
         loadingData,
+
         agregarIngreso,
         editarIngreso,
         borrarIngreso,
+
         agregarGasto,
         editarGasto,
         borrarGasto,
+
         agregarCosaPorPagar,
         editarCosaPorPagar,
         cambiarEstadoPago,
+
+        agregarCosaPorCobrar,
+        editarCosaPorCobrar,
+        borrarCosaPorCobrar,
+        marcarCobroComoCobrado,
+
         agregarCliente,
         editarCliente,
         borrarCliente,
+
         agregarAhorro,
         editarAhorro,
         borrarAhorro,

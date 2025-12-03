@@ -3,13 +3,15 @@
 type AppleRingsProps = {
   ingresosMes: number;
   gastosMes: number;
-  pendientesMes: number;
+  pendientesMes: number;       // deudas
+  cobrosPendientes: number;    // 👈 NUEVO
 };
 
 export default function AppleRings({
   ingresosMes,
   gastosMes,
-  pendientesMes
+  pendientesMes,
+  cobrosPendientes
 }: AppleRingsProps) {
   const now = new Date();
   const year = now.getFullYear();
@@ -19,32 +21,36 @@ export default function AppleRings({
 
   const balance = Math.max(ingresosMes - gastosMes, 0);
 
-  // ❗ Ratios de cada anillo
-  const ring1Ratio = ingresosMes > 0 ? Math.min(gastosMes / ingresosMes, 1) : 0;       // gastos
-  const ring2Ratio = ingresosMes > 0 ? Math.min(balance / ingresosMes, 1) : 0;         // ahorro
-  const ring3Ratio = dayOfMonth / daysInMonth;                                         // mes
-  const ring4Ratio = ingresosMes > 0 ? Math.min(pendientesMes / ingresosMes, 1) : 0;   // pendientes
+  // ❗ Ratios
+  const ring1Ratio = ingresosMes > 0 ? Math.min(gastosMes / ingresosMes, 1) : 0;        // Gastos
+  const ring2Ratio = ingresosMes > 0 ? Math.min(balance / ingresosMes, 1) : 0;          // Ahorro
+  const ring3Ratio = dayOfMonth / daysInMonth;                                          // Mes
+  const ring4Ratio = ingresosMes > 0 ? Math.min(pendientesMes / ingresosMes, 1) : 0;    // Deudas
+  const ring5Ratio = ingresosMes > 0 ? Math.min(cobrosPendientes / ingresosMes, 1) : 0; // Cobros pendientes
 
   // Radios
-  const r1 = 58;
-  const r2 = 44;
-  const r3 = 30;
-  const r4 = 16;
+  const r1 = 70;
+  const r2 = 56;
+  const r3 = 42;
+  const r4 = 28;
+  const r5 = 14; // 👈 NUEVO anillo
 
   const c1 = 2 * Math.PI * r1;
   const c2 = 2 * Math.PI * r2;
   const c3 = 2 * Math.PI * r3;
   const c4 = 2 * Math.PI * r4;
+  const c5 = 2 * Math.PI * r5;
 
   return (
     <div className="flex items-center gap-6">
-      <svg width="160" height="160" viewBox="0 0 160 160">
-        <g transform="translate(80,80) rotate(-90)">
-          {/* BASES */}
-          <circle r={r1} fill="none" stroke="rgba(148,163,184,0.25)" strokeWidth={10} />
-          <circle r={r2} fill="none" stroke="rgba(148,163,184,0.25)" strokeWidth={10} />
-          <circle r={r3} fill="none" stroke="rgba(148,163,184,0.25)" strokeWidth={10} />
-          <circle r={r4} fill="none" stroke="rgba(148,163,184,0.25)" strokeWidth={10} />
+      <svg width="180" height="180" viewBox="0 0 180 180">
+        <g transform="translate(90,90) rotate(-90)">
+          {/* Bases */}
+          <circle r={r1} fill="none" stroke="rgba(148,163,184,0.22)" strokeWidth={10} />
+          <circle r={r2} fill="none" stroke="rgba(148,163,184,0.22)" strokeWidth={10} />
+          <circle r={r3} fill="none" stroke="rgba(148,163,184,0.22)" strokeWidth={10} />
+          <circle r={r4} fill="none" stroke="rgba(148,163,184,0.22)" strokeWidth={10} />
+          <circle r={r5} fill="none" stroke="rgba(148,163,184,0.22)" strokeWidth={10} />
 
           {/* Gastos */}
           <circle
@@ -82,7 +88,7 @@ export default function AppleRings({
             style={{ transition: "stroke-dashoffset 0.7s ease-out" }}
           />
 
-          {/* Pendientes */}
+          {/* Deudas */}
           <circle
             r={r4}
             fill="none"
@@ -93,8 +99,21 @@ export default function AppleRings({
             strokeLinecap="round"
             style={{ transition: "stroke-dashoffset 0.7s ease-out" }}
           />
+
+          {/* Cobros pendientes (nuevo) */}
+          <circle
+            r={r5}
+            fill="none"
+            stroke="url(#ring5grad)"
+            strokeWidth={10}
+            strokeDasharray={c5}
+            strokeDashoffset={c5 * (1 - ring5Ratio)}
+            strokeLinecap="round"
+            style={{ transition: "stroke-dashoffset 0.7s ease-out" }}
+          />
         </g>
 
+        {/* COLORES GRADIENTES */}
         <defs>
           <linearGradient id="ring1grad" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#fb7185" />
@@ -115,10 +134,16 @@ export default function AppleRings({
             <stop offset="0%" stopColor="#fbbf24" />
             <stop offset="100%" stopColor="#f59e0b" />
           </linearGradient>
+
+          {/* NUEVO: COBROS PENDIENTES */}
+          <linearGradient id="ring5grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#34d399" />
+            <stop offset="100%" stopColor="#10b981" />
+          </linearGradient>
         </defs>
       </svg>
 
-      {/* Texto */}
+      {/* Texto de indicadores */}
       <div className="space-y-2 text-sm">
         <p className="text-slate-600 text-xs uppercase tracking-[0.18em]">
           Actividad del mes
@@ -141,7 +166,12 @@ export default function AppleRings({
 
         <p className="text-sm text-slate-800">
           <span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-2" />
-          Pendientes: <strong>{Math.round(ring4Ratio * 100)}%</strong>
+          Deudas: <strong>{Math.round(ring4Ratio * 100)}%</strong>
+        </p>
+
+        <p className="text-sm text-slate-800">
+          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-2" />
+          Cobros pendientes: <strong>{Math.round(ring5Ratio * 100)}%</strong>
         </p>
       </div>
     </div>

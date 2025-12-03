@@ -50,6 +50,11 @@ const menu = [
     icon: ListTodo,
   },
   {
+  label: "Cosas por cobrar",
+  href: "/dashboard/cosas-por-cobrar",
+  icon: DollarSign,
+},
+  {
     label: "Configuración",
     href: "/dashboard/configuracion",
     icon: Cog6ToothIcon,

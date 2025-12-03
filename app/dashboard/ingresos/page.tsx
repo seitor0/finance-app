@@ -12,7 +12,7 @@ export default function IngresosPage() {
   const handleSave = (data) => {
     const payload = {
       descripcion: data.descripcion,
-      monto: Number(data.monto),   // ← aseguramos número siempre
+      monto: Number(data.monto),
       fecha: data.fecha,
       categoria: data.categoria || "General",
     };
@@ -64,6 +64,7 @@ export default function IngresosPage() {
               <td className="p-3">{item.fecha}</td>
               <td className="p-3">{item.descripcion}</td>
               <td className="p-3">${item.monto.toLocaleString("es-AR")}</td>
+
               <td className="p-3 flex gap-2">
                 <button
                   className="px-3 py-1 bg-yellow-500 text-white rounded"
