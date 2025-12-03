@@ -1,17 +1,21 @@
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import Groq from "groq-sdk";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
 export async function POST(req: Request) {
   try {
     const { texto } = await req.json();
 
+    console.log("📩 Texto recibido:", texto);
+
     const prompt = `
-Sos un analizador financiero que recibe frases reales de gastos/ingresos en español rioplatense.
-Tu tarea es devolver un JSON ESTRICTO con:
+Interpretá un gasto/ingreso financiero y devolvé SOLO JSON válido con:
 
 {
   "tipo": "gasto" | "ingreso",
@@ -67,30 +71,48 @@ Debe parsearse aunque tenga puntos, comas o texto alrededor.
 - “el lunes/martes/etc” → calcular el último día mencionado
 - “12 de noviembre” → convertir a YYYY-MM-DD
 - Si no hay fecha → usar fecha actual
+{
+  "tipo": "...",
+  "descripcion": "...",
+  "categoria": "...",
+  "monto": ...,
+  "usd": ...,
+  "fecha": "YYYY-MM-DD"
+}
 
-RESPONDER SOLO EL JSON.
- Sin texto adicional.
 `;
 
-    const response = await groq.chat.completions.create({
-      model: "llama3-70b-8192",
+    const chat = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+
       messages: [
         { role: "system", content: prompt },
-        { role: "user", content: texto }
+        { role: "user", content: texto },
       ],
-      temperature: 0.2
+      temperature: 0.2,
+      max_tokens: 300,
     });
 
-    const raw = response.choices[0]?.message?.content || "{}";
+    console.log("🧠 RAW RESPONSE:", chat);
 
-    return new Response(raw, {
-      headers: { "Content-Type": "application/json" }
+    const content = chat.choices?.[0]?.message?.content?.trim();
+
+    console.log("🧠 IA content:", content);
+
+    if (!content) {
+      throw new Error("La IA no devolvió contenido");
+    }
+
+    return new Response(content, {
+      headers: { "Content-Type": "application/json" },
     });
 
-  } catch (err) {
-    console.error(err);
-    return new Response(JSON.stringify({ error: "Error procesando IA" }), {
-      status: 500
-    });
+  } catch (err: any) {
+    console.error("🔥 ERROR IA:", err);
+
+    return new Response(
+      JSON.stringify({ error: "Error procesando IA", detalle: String(err) }),
+      { status: 500 }
+    );
   }
 }

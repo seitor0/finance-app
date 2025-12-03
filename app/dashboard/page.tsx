@@ -302,10 +302,11 @@ export default function DashboardPage() {
           </p>
 
           <textarea
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            className="w-full h-28 p-4 rounded-2xl border border-slate-200 bg-white/60 focus:bg-white focus:ring-2 focus:ring-blue-400 outline-none text-sm"
-            placeholder='Ej: "Hoy gasté 25.000 en el super" o "Cobré 150.000 por diseño"'
+              value={texto}
+  onChange={(e) => setTexto(e.target.value)}
+  className="w-full h-28 p-4 rounded-2xl border border-slate-300 bg-white text-slate-800 
+             placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-400 outline-none text-sm"
+  placeholder='Ej: "Hoy gasté 25.000 en el super" o "Cobré 900.000 por una campaña"'
           />
 
           <button
@@ -317,9 +318,11 @@ export default function DashboardPage() {
           </button>
 
           {respuesta && (
-            <div className="mt-4 p-3 rounded-2xl bg-blue-50 border border-blue-200 text-xs font-mono">
-              <pre>{JSON.stringify(respuesta, null, 2)}</pre>
-            </div>
+             <div className="mt-4 p-4 rounded-2xl bg-white text-slate-800 border border-blue-200 shadow">
+    <pre className="text-xs font-mono whitespace-pre-wrap text-slate-700">
+      {JSON.stringify(respuesta, null, 2)}
+    </pre>
+  </div>
           )}
         </div>
 
