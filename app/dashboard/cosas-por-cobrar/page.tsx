@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import FormPorCobrar from "./FormPorCobrar";
+import type { ToCollectItem } from "@/context/AppContext";
 
 const ESTADOS = [
   { value: "terminado", label: "Terminado" },
@@ -20,16 +21,37 @@ export default function CosasPorCobrarPage() {
   } = useApp();
 
   const [showForm, setShowForm] = useState(false);
-  const [editItem, setEditItem] = useState(null);
+  const [editItem, setEditItem] = useState<ToCollectItem | null>(null);
 
   // ---------------------------
   // ALTA / EDICIÓN
   // ---------------------------
-  const handleSave = async (data) => {
-    if (editItem) {
-      await editarCosaPorCobrar(editItem.id, data);
+  const handleSave = async (data: Omit<ToCollectItem, "id">) => {
+    const esEdicion = Boolean(editItem);
+
+    // 👉 Caso especial: si desde el form el usuario elige "cobrado"
+    if (data.status === "cobrado") {
+      if (esEdicion) {
+        await marcarCobroComoCobrado(editItem!);
+      } else {
+        // si es un nuevo cobro creado como cobrado, lo tratamos igual
+        await marcarCobroComoCobrado({
+          id: "temp", // no importa, solo para pasar valores
+          nombre: data.nombre,
+          categoria: data.categoria,
+          monto: data.monto,
+          vencimiento: data.vencimiento ?? "",
+          status: "cobrado",
+          importante: data.importante,
+        } as ToCollectItem);
+      }
     } else {
-      await agregarCosaPorCobrar(data);
+      // Normal (terminado/facturado)
+      if (esEdicion) {
+        await editarCosaPorCobrar(editItem!.id, data);
+      } else {
+        await agregarCosaPorCobrar(data);
+      }
     }
 
     setShowForm(false);
@@ -37,10 +59,15 @@ export default function CosasPorCobrarPage() {
   };
 
   // ---------------------------
-  // CAMBIAR ESTADO
+  // CAMBIAR ESTADO DESDE EL SELECT
   // ---------------------------
-  async function handleChangeStatus(item, nuevoEstado) {
+  async function handleChangeStatus(item: ToCollectItem, nuevoEstado: string) {
     if (nuevoEstado === "cobrado") {
+      const confirmar = confirm(
+        `¿Confirmás que este cobro (${item.nombre}) ya fue COBRADO? Esto lo moverá a tus ingresos.`
+      );
+      if (!confirmar) return;
+
       await marcarCobroComoCobrado(item);
     } else {
       await editarCosaPorCobrar(item.id, { status: nuevoEstado });
@@ -84,9 +111,7 @@ export default function CosasPorCobrarPage() {
 
               <p className="text-sm text-slate-500">
                 ${Number(item.monto).toLocaleString("es-AR")}
-                {item.vencimiento && (
-                  <> · vence {item.vencimiento}</>
-                )}
+                {item.vencimiento && <> · vence {item.vencimiento}</>}
               </p>
 
               {item.categoria && (
@@ -101,16 +126,12 @@ export default function CosasPorCobrarPage() {
               {/* CAMBIAR ESTADO */}
               <select
                 value={item.status}
-                onChange={(e) =>
-                  handleChangeStatus(item, e.target.value)
-                }
+                onChange={(e) => handleChangeStatus(item, e.target.value)}
                 className="border rounded-lg px-2 py-1 text-sm"
+                disabled={item.status === "cobrado"}
               >
                 {ESTADOS.map((opt) => (
-                  <option
-                    key={opt.value}
-                    value={opt.value}
-                  >
+                  <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
                 ))}
@@ -119,6 +140,7 @@ export default function CosasPorCobrarPage() {
               {/* EDITAR */}
               <button
                 onClick={() => {
+                  if (item.status === "cobrado") return alert("Este cobro ya fue acreditado y no puede editarse.");
                   setEditItem(item);
                   setShowForm(true);
                 }}

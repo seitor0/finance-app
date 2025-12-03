@@ -1,24 +1,35 @@
 "use client";
 
 import { useState } from "react";
-import { useApp } from "@/context/AppContext";
+import { ToCollectItem } from "@/context/AppContext";
 
-export default function FormPorCobrar({ onClose, editItem, onSave }) {
-  const [nombre, setNombre] = useState(editItem?.nombre || "");
-  const [categoria, setCategoria] = useState(editItem?.categoria || "");
-  const [monto, setMonto] = useState(editItem?.monto || "");
-  const [vencimiento, setVencimiento] = useState(editItem?.vencimiento || "");
-  const [status, setStatus] = useState(editItem?.status || "terminado");
-  const [importante, setImportante] = useState(editItem?.importante || false);
+interface FormPorCobrarProps {
+  onClose: () => void;
+  editItem?: ToCollectItem | null;
+  onSave: (data: Omit<ToCollectItem, "id">) => void;
+}
+
+export default function FormPorCobrar({
+  onClose,
+  editItem,
+  onSave
+}: FormPorCobrarProps) {
+
+  const [nombre, setNombre] = useState(editItem?.nombre ?? "");
+  const [categoria, setCategoria] = useState(editItem?.categoria ?? "");
+  const [monto, setMonto] = useState(editItem?.monto?.toString() ?? "");
+  const [vencimiento, setVencimiento] = useState(editItem?.vencimiento ?? "");
+  const [status, setStatus] = useState(editItem?.status ?? "terminado");
+  const [importante, setImportante] = useState(editItem?.importante ?? false);
 
   const guardar = () => {
-    if (!nombre || !monto) return;
+    if (!nombre.trim() || !monto) return;
 
     onSave({
-      nombre,
-      categoria,
+      nombre: nombre.trim(),
+      categoria: categoria.trim(),
       monto: Number(monto),
-      vencimiento: vencimiento || null,
+      vencimiento: vencimiento || "",
       status,
       importante,
     });
@@ -27,7 +38,7 @@ export default function FormPorCobrar({ onClose, editItem, onSave }) {
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
-        
+
         <h2 className="text-xl font-semibold mb-2">
           {editItem ? "Editar cobro" : "Nuevo cobro pendiente"}
         </h2>
@@ -74,13 +85,14 @@ export default function FormPorCobrar({ onClose, editItem, onSave }) {
           />
         </div>
 
-        {/* ESTADO DEL COBRO */}
+        {/* ESTADO */}
         <div>
           <label className="block text-sm font-medium">Estado</label>
           <select
             className="w-full mt-1 p-2 border rounded-lg"
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={(e) => setStatus(e.target.value as any)}
+            disabled={editItem?.status === "cobrado"}
           >
             <option value="terminado">Terminado</option>
             <option value="facturado">Facturado</option>

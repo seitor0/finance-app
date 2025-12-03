@@ -3,17 +3,6 @@
 import { useMemo } from "react";
 import Chart from "./Chart";
 
-
-const CATEGORIAS_BASE = [
-  "Supermercado",
-  "Transporte",
-  "Servicios",
-  "Ropa",
-  "Salud",
-  "Suscripciones",
-  "Otros",
-];
-
 type Gasto = {
   fecha: string;
   monto: number | null;
@@ -21,53 +10,61 @@ type Gasto = {
 };
 
 type Props = {
-  ingresos: any[]; // por ahora no los usamos acá
+  ingresos: any[];
   gastos: Gasto[];
 };
 
-export default function FinanzasDelMes({ ingresos, gastos }: Props) {
+export default function FinanzasDelMes({ gastos }: Props) {
   const ahora = new Date();
   const mesActual = ahora.getMonth();
   const añoActual = ahora.getFullYear();
 
-  // GASTOS DEL MES
-  const gastosMes = useMemo(
-    () =>
-      gastos.filter((g) => {
-        const f = new Date(g.fecha);
-        return (
-          f.getMonth() === mesActual && f.getFullYear() === añoActual
-        );
-      }),
-    [gastos, mesActual, añoActual]
-  );
+  // ============================
+  // FILTRO: GASTOS DEL MES
+  // ============================
+  const gastosMes = useMemo(() => {
+    return gastos.filter((g) => {
+      const f = new Date(g.fecha ?? "");
+      return (
+        !isNaN(f.getTime()) &&
+        f.getMonth() === mesActual &&
+        f.getFullYear() === añoActual
+      );
+    });
+  }, [gastos, mesActual, añoActual]);
 
-  // SUMA POR CATEGORÍA → datos para el gráfico
+  // ============================
+  // SUMA POR CATEGORÍA
+  // ============================
   const chartData = useMemo(() => {
     const mapa: Record<string, number> = {};
 
-    CATEGORIAS_BASE.forEach((cat) => (mapa[cat] = 0));
-
     gastosMes.forEach((g) => {
-      const cat =
-        g.categoria && g.categoria.trim() !== ""
+      const categoria =
+        g.categoria?.trim() && g.categoria !== ""
           ? g.categoria
           : "Otros";
 
-      if (!mapa[cat]) mapa[cat] = 0;
-      mapa[cat] += g.monto ?? 0;
+      if (!mapa[categoria]) mapa[categoria] = 0;
+
+      mapa[categoria] += Number(g.monto ?? 0);
     });
 
-    // limpiamos categorías en 0 y convertimos a array { name, value }
     return Object.entries(mapa)
-      .filter(([, monto]) => monto > 0)
-      .map(([name, value]) => ({ name, value }));
+      .map(([name, value]) => ({
+        name,
+        value: Number(value) || 0,
+      }))
+      .filter((item) => item.value > 0)
+      .sort((a, b) => b.value - a.value);
   }, [gastosMes]);
 
-  const totalMes = chartData.reduce(
-    (acc, item) => acc + item.value,
-    0
-  );
+  // ============================
+  // TOTAL DEL MES
+  // ============================
+  const totalMes = useMemo(() => {
+    return chartData.reduce((acc, item) => acc + Number(item.value), 0);
+  }, [chartData]);
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm">
@@ -79,14 +76,15 @@ export default function FinanzasDelMes({ ingresos, gastos }: Props) {
         </p>
       ) : (
         <div className="flex flex-col md:flex-row gap-10">
-          {/* Gráfico */}
+          {/* ========== GRÁFICO ========== */}
           <div className="w-full md:w-1/2 h-64">
             <Chart data={chartData} />
           </div>
 
-          {/* Detalle por categoría */}
+          {/* ========== DETALLE POR CATEGORÍA ========== */}
           <div className="w-full md:w-1/2">
-            <h3 className="font-semibold mb-2">Categorías</h3>
+            <h3 className="font-semibold mb-3">Categorías</h3>
+
             <ul className="space-y-2">
               {chartData.map((item, idx) => (
                 <li
@@ -101,12 +99,15 @@ export default function FinanzasDelMes({ ingresos, gastos }: Props) {
               ))}
             </ul>
 
-            <div className="mt-4 pt-4 border-t font-bold">
+            {/* TOTAL */}
+            <div className="mt-4 pt-4 border-t font-bold text-sm">
               Total gastado este mes:{" "}
-              {totalMes.toLocaleString("es-AR", {
-                style: "currency",
-                currency: "ARS",
-              })}
+              <span className="text-slate-800">
+                {totalMes.toLocaleString("es-AR", {
+                  style: "currency",
+                  currency: "ARS",
+                })}
+              </span>
             </div>
           </div>
         </div>

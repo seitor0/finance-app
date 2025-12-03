@@ -76,7 +76,7 @@ interface AppContextType {
   ingresos: Movimiento[];
   gastos: Movimiento[];
   cosasPorPagar: ToPayItem[];
-  cosasPorCobrar: ToCollectItem[];   // 👈 nuevo
+  cosasPorCobrar: ToCollectItem[];
   clientes: Cliente[];
   ahorros: Ahorro[];
 
@@ -96,7 +96,6 @@ interface AppContextType {
   editarCosaPorPagar: (id: string, d: Partial<ToPayItem>) => Promise<void>;
   cambiarEstadoPago: (id: string, estado: PaymentStatus) => Promise<void>;
 
-  // NUEVOS CRUD COBROS
   agregarCosaPorCobrar: (d: Omit<ToCollectItem, "id">) => Promise<void>;
   editarCosaPorCobrar: (id: string, d: Partial<ToCollectItem>) => Promise<void>;
   borrarCosaPorCobrar: (id: string) => Promise<void>;
@@ -128,7 +127,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [gastos, setGastos] = useState<Movimiento[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [cosasPorPagar, setCosasPorPagar] = useState<ToPayItem[]>([]);
-  const [cosasPorCobrar, setCosasPorCobrar] = useState<ToCollectItem[]>([]); // 👈 nuevo
+  const [cosasPorCobrar, setCosasPorCobrar] = useState<ToCollectItem[]>([]);
   const [ahorros, setAhorros] = useState<Ahorro[]>([]);
   const [dineroDisponible, setDineroDisponible] = useState(0);
   const [balanceReal, setBalanceReal] = useState(0);
@@ -282,7 +281,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // ---------- NUEVO: COSAS POR COBRAR ----------
+  // ---------- COSAS POR COBRAR ----------
   async function agregarCosaPorCobrar(data: Omit<ToCollectItem, "id">) {
     if (!user) return;
     await addDoc(collection(db, "usuarios", user.uid, "cosasPorCobrar"), {
@@ -291,9 +290,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }
 
+  // ⭐ FIX — DETECTA CAMBIO A "COBRADO"
   async function editarCosaPorCobrar(id: string, d: Partial<ToCollectItem>) {
     if (!user) return;
+
     const ref = doc(db, "usuarios", user.uid, "cosasPorCobrar", id);
+    const snap = await getDoc(ref);
+    const previo = snap.data() as ToCollectItem | undefined;
+
+    if (!previo) return;
+
+    const nuevoEstado = d.status ?? previo.status;
+
+    // Si cambia a cobrado → crear ingreso + borrar
+    if (previo.status !== "cobrado" && nuevoEstado === "cobrado") {
+      const hoy = new Date().toISOString().slice(0, 10);
+
+      await addDoc(collection(db, "usuarios", user.uid, "ingresos"), {
+        descripcion: previo.nombre,
+        monto: toNumber(previo.monto),
+        fecha: hoy,
+        categoria: "Cobros",
+      });
+
+      await deleteDoc(ref);
+      return;
+    }
+
+    // Caso normal → solo update
     await updateDoc(ref, d);
   }
 
@@ -302,7 +326,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await deleteDoc(doc(db, "usuarios", user.uid, "cosasPorCobrar", id));
   }
 
-  // ----- PASAR A “COBRADO” → CREA INGRESO -----
+  // MODO MANUAL (opcional)
   async function marcarCobroComoCobrado(item: ToCollectItem) {
     if (!user) return;
 
@@ -357,7 +381,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         gastos,
         clientes,
         cosasPorPagar,
-        cosasPorCobrar,     // 👈 nuevo
+        cosasPorCobrar,
         ahorros,
         dineroDisponible,
         balanceReal,
