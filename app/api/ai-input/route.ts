@@ -1,96 +1,99 @@
-import { NextResponse } from "next/server";
+import Groq from "groq-sdk";
+
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req: Request) {
   try {
     const { texto } = await req.json();
 
-    if (!texto || texto.trim().length === 0) {
-      return NextResponse.json({ error: "Texto vacío" }, { status: 400 });
-    }
+    const prompt = `
+Sos un analizador financiero que recibe frases reales de gastos/ingresos en español rioplatense.
+Tu tarea es devolver un JSON ESTRICTO con:
 
-    const lower = texto.toLowerCase();
+{
+  "tipo": "gasto" | "ingreso",
+  "categoria": "string",
+  "descripcion": "string",
+  "monto": number,
+  "fecha": "YYYY-MM-DD"
+}
 
-    // ----------------------------
-    // 1) EXTRAER MONTO
-    // ----------------------------
-    const montoMatch = texto.match(/(\d[\d\.]*)/);
-    const monto = montoMatch ? Number(montoMatch[1].replace(/\./g, "")) : null;
+### CATEGORÍAS OFICIALES (elegir una EXACTA):
+- Kiosco
+- Supermercado
+- Salidas
+- Impuestos
+- Servicios
+- Mascota
+- Farmacia
+- Alquiler   (incluye alquiler, expensas, cochera)
+- Librería
+- Suscripciones
+- Tarjetas   (todas las tarjetas de crédito)
+- Compras    (incluye ropa, juguetes, tecnología)
+- Otros
 
-    // ----------------------------
-    // 2) DETECTAR FECHA (por ahora hoy)
-    // ----------------------------
-    const fecha = new Date().toISOString().slice(0, 10);
+### MAPA DE PALABRAS CLAVE PARA CLASIFICAR:
 
-    // ----------------------------
-    // 3) DETECTAR TIPO
-    // ----------------------------
-    let tipo: "gasto" | "ingreso" | "ahorro" | "compra-usd" | "venta-usd" = "gasto";
+Kiosco → kiosco, cigarrillos, puchos, golosinas, snacks  
+Supermercado → super, supermercado, chino, comida, alimentos, limpieza  
+Salidas → restaurante, cena, almuerzo afuera, salir a comer, bar, café  
+Impuestos → AFIP, ingresos brutos, IVA, patente, municipal  
+Servicios → gas, luz, agua, internet, cable, celular  
+Mascota → perro, Chispa, veterinaria, paseador, alimento de mascota  
+Farmacia → remedio, medicamentos, farmacia  
+Alquiler → alquiler, expensas, cochera  
+Librería → librería, útiles, cuadernos  
+Suscripciones → Netflix, Spotify, membresía, suscripción  
+Tarjetas → pago tarjeta, Mastercard, Visa, Naranja, Amex  
+Compras → ropa, juguetes, tecnología, indumentaria, celular, notebook  
 
-    if (lower.includes("cobré") || lower.includes("ingresó") || lower.includes("me pagaron")) {
-      tipo = "ingreso";
-    }
+### DESCRIPCIÓN:
+Debe ser limpia y sin palabras como “hoy”, “ayer”, “pagué”, “gasté”.
 
-    if (lower.includes("ahorro") || lower.includes("guardé") || lower.includes("compré dólares")) {
-      tipo = "ahorro";
-    }
+Ejemplos:
+- "Hoy pagué el servicio de gas 89000" → "Pago de gas"
+- "Compré juguetes para las chicas" → "Compra de juguetes"
 
-    if (lower.includes("compré dólares") || lower.includes("compra usd")) {
-      tipo = "compra-usd";
-    }
+### MONTO:
+Debe parsearse aunque tenga puntos, comas o texto alrededor.
 
-    if (lower.includes("vendí dólares") || lower.includes("venta usd")) {
-      tipo = "venta-usd";
-    }
+### FECHA:
+- “hoy” → fecha actual
+- “ayer” → fecha actual - 1 día
+- “el lunes/martes/etc” → calcular el último día mencionado
+- “12 de noviembre” → convertir a YYYY-MM-DD
+- Si no hay fecha → usar fecha actual
 
-    // ----------------------------
-    // 4) DETECTAR CATEGORÍA
-    // ----------------------------
-    const mapaCategorias: Record<string, string> = {
-      alquiler: "Alquiler",
-      expensas: "Expensas",
-      supermercado: "Supermercado",
-      super: "Supermercado",
-      tarjeta: "Tarjeta",
-      viaticos: "Gastos fijos",
-      viático: "Gastos fijos",
-      viáticos: "Gastos fijos",
-      luz: "Servicios",
-      gas: "Servicios",
-      agua: "Servicios",
-      internet: "Servicios",
-      comida: "Comida",
-      netflix: "Servicios",
-      gimnasio: "Salud",
-      seguro: "Seguros",
-    };
+RESPONDER SOLO EL JSON.
+ Sin texto adicional.
+`;
 
-    let categoriaDetectada = "Otros";
-
-    for (const palabra in mapaCategorias) {
-      if (lower.includes(palabra)) {
-        categoriaDetectada = mapaCategorias[palabra];
-        break;
-      }
-    }
-
-    // ----------------------------
-    // 5) LIMPIAR DESCRIPCIÓN
-    // ----------------------------
-    const descripcionLimpia = texto.replace(/\d[\d\.]*/g, "").trim();
-
-    // ----------------------------
-    // RESPUESTA FINAL
-    // ----------------------------
-    return NextResponse.json({
-      tipo,
-      descripcion: descripcionLimpia,
-      monto: monto ?? 0,
-      fecha,
-      categoria: categoriaDetectada,
+    const completion = await groq.chat.completions.create({
+      model: "llama3-70b-8192",
+      messages: [
+        {
+          role: "system",
+          content: prompt,
+        },
+        {
+          role: "user",
+          content: texto,
+        },
+      ],
+      temperature: 0.2,
     });
 
-  } catch (e) {
-    console.error("Error en IA:", e);
-    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+    const raw = completion.choices[0]?.message?.content || "{}";
+
+    return new Response(raw, {
+      headers: { "Content-Type": "application/json" },
+    });
+
+  } catch (error) {
+    console.error(error);
+    return new Response(JSON.stringify({ error: "Ocurrió un error" }), {
+      status: 500,
+    });
   }
 }
