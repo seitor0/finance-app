@@ -25,16 +25,19 @@ export default function DashboardPage() {
     agregarGasto,
     agregarAhorro,
     dineroDisponible,
-    setDineroDisponible,
   } = useApp();
 
-  // Fecha actual → clave YYYY-MM
+  // ============================
+  // FECHA ACTUAL
+  // ============================
   const ahora = new Date();
   const añoActual = ahora.getFullYear();
   const mesActualNumero = ahora.getMonth() + 1;
   const mesActualKey = `${añoActual}-${String(mesActualNumero).padStart(2, "0")}`;
 
-  // Ingresos del mes
+  // ============================
+  // INGRESOS DEL MES
+  // ============================
   const totalIngresosMes = useMemo(
     () =>
       ingresos
@@ -43,7 +46,9 @@ export default function DashboardPage() {
     [ingresos, mesActualKey]
   );
 
-  // Gastos
+  // ============================
+  // GASTOS DEL MES
+  // ============================
   const totalGastosMes = useMemo(
     () =>
       gastos
@@ -52,7 +57,9 @@ export default function DashboardPage() {
     [gastos, mesActualKey]
   );
 
-  // Pendientes
+  // ============================
+  // PENDIENTES DEL MES
+  // ============================
   const totalPendientesMes = useMemo(
     () =>
       cosasPorPagar
@@ -68,7 +75,9 @@ export default function DashboardPage() {
   const balanceMes =
     totalIngresosMes - totalGastosMes - totalPendientesMes;
 
-  // Últimos movimientos
+  // ============================
+  // ÚLTIMOS MOVIMIENTOS
+  // ============================
   const movimientos: MovimientoUI[] = useMemo(() => {
     const lista: MovimientoUI[] = [
       ...ingresos.map((i: any) => ({
@@ -91,7 +100,9 @@ export default function DashboardPage() {
       .slice(0, 5);
   }, [ingresos, gastos]);
 
-  // Ahorros USD
+  // ============================
+  // AHORROS USD
+  // ============================
   const totalUSD = useMemo(
     () =>
       (ahorros ?? []).reduce(
@@ -101,7 +112,9 @@ export default function DashboardPage() {
     [ahorros]
   );
 
-  // IA
+  // ============================
+  // IA INPUT
+  // ============================
   const [texto, setTexto] = useState("");
   const [loading, setLoading] = useState(false);
   const [respuesta, setRespuesta] = useState<any>(null);
@@ -120,16 +133,17 @@ export default function DashboardPage() {
       const json = await resp.json();
       setRespuesta(json);
 
+      // GASTO
       if (json.tipo === "gasto") {
-  agregarGasto({
-    descripcion: json.descripcion,
-    monto: json.monto,
-    fecha: json.fecha,
-    categoria: json.categoria,  // ← AHORA SÍ SE GUARDA LA CATEGORÍA
-  });
-}
+        agregarGasto({
+          descripcion: json.descripcion,
+          monto: json.monto,
+          fecha: json.fecha,
+          categoria: json.categoria,
+        });
+      }
 
-
+      // INGRESO
       if (json.tipo === "ingreso") {
         agregarIngreso({
           descripcion: json.descripcion,
@@ -138,6 +152,7 @@ export default function DashboardPage() {
         });
       }
 
+      // AHORRO USD
       if (json.tipo === "ahorro") {
         agregarAhorro({
           usd: json.usd,
@@ -152,7 +167,6 @@ export default function DashboardPage() {
           fecha: json.fecha,
           notas: "Compra de dólares",
         });
-        setDineroDisponible(dineroDisponible - json.arsGasto);
       }
 
       if (json.tipo === "venta-usd") {
@@ -161,7 +175,6 @@ export default function DashboardPage() {
           fecha: json.fecha,
           notas: "Venta de dólares",
         });
-        setDineroDisponible(dineroDisponible + json.arsIngreso);
       }
     } catch (e) {
       console.error(e);
@@ -171,14 +184,16 @@ export default function DashboardPage() {
     }
   }
 
-  // ============================================
-  // ===============  RENDER UI  ================
-  // ============================================
+  // ============================
+  // RENDER
+  // ============================
 
   return (
     <div className="space-y-8 fade-up">
 
-      {/* FILA 1 */}
+      {/* ============================
+          FILA 1 — Balance + Rings
+      ============================ */}
       <section className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)]">
 
         {/* IZQUIERDA */}
@@ -221,6 +236,7 @@ export default function DashboardPage() {
         {/* DERECHA */}
         <div className="space-y-4">
 
+          {/* OBJETIVOS */}
           <div className="glass-card">
             <h3 className="text-lg font-semibold mb-4">Objetivos del mes</h3>
 
@@ -275,6 +291,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* AHORRO USD */}
           <div className="glass-card">
             <h3 className="text-lg font-semibold mb-1">Ahorro en dólares</h3>
             <p className="text-sm text-slate-500 mb-4">
@@ -285,19 +302,21 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* ESTE ERA EL DIV QUE FALTABA CERRAR 👇 */}
+          {/* COSAS POR PAGAR + DISPONIBLE */}
           <div className="grid grid-cols-2 gap-6 w-[95%] mx-auto">
             <WidgetCosasPorPagar />
-           <WidgetDisponible balanceMes={balanceMes} />
-
+            <WidgetDisponible />
           </div>
 
-        </div> {/* ← ESTE ERA EL CIERRE FALTANTE */}
-
+        </div>
       </section>
 
-      {/* FILA 2 */}
+      {/* ============================
+          FILA 2 — IA + Finanzas
+      ============================ */}
       <section className="grid gap-6 lg:grid-cols-2">
+        
+        {/* IA INPUT */}
         <div className="glass-card">
           <h2 className="text-lg font-semibold mb-3">Cargar con IA</h2>
           <p className="text-sm text-slate-500 mb-4">
@@ -305,11 +324,10 @@ export default function DashboardPage() {
           </p>
 
           <textarea
-              value={texto}
-  onChange={(e) => setTexto(e.target.value)}
-  className="w-full h-28 p-4 rounded-2xl border border-slate-300 bg-white text-slate-800 
-             placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-400 outline-none text-sm"
-  placeholder='Ej: "Hoy gasté 25.000 en el super" o "Cobré 900.000 por una campaña"'
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            className="w-full h-28 p-4 rounded-2xl border border-slate-300 bg-white text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 outline-none text-sm"
+            placeholder='Ej: "Hoy gasté 25.000 en el super" o "Cobré 900.000 por una campaña"'
           />
 
           <button
@@ -321,11 +339,11 @@ export default function DashboardPage() {
           </button>
 
           {respuesta && (
-             <div className="mt-4 p-4 rounded-2xl bg-white text-slate-800 border border-blue-200 shadow">
-    <pre className="text-xs font-mono whitespace-pre-wrap text-slate-700">
-      {JSON.stringify(respuesta, null, 2)}
-    </pre>
-  </div>
+            <div className="mt-4 p-4 rounded-2xl bg-white text-slate-800 border border-blue-200 shadow">
+              <pre className="text-xs font-mono whitespace-pre-wrap text-slate-700">
+                {JSON.stringify(respuesta, null, 2)}
+              </pre>
+            </div>
           )}
         </div>
 
@@ -334,7 +352,9 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* FILA 3 */}
+      {/* ============================
+          FILA 3 — Últimos movimientos
+      ============================ */}
       <section className="glass-card">
         <h2 className="text-lg font-semibold mb-4">
           Últimos movimientos (vista tarjeta)
@@ -385,6 +405,7 @@ export default function DashboardPage() {
           })}
         </div>
       </section>
+
     </div>
   );
 }

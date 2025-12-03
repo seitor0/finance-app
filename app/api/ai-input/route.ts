@@ -1,4 +1,3 @@
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -12,10 +11,8 @@ export async function POST(req: Request) {
   try {
     const { texto } = await req.json();
 
-    console.log("📩 Texto recibido:", texto);
-
     const prompt = `
-Interpretá un gasto/ingreso financiero y devolvé SOLO JSON válido con:
+Interpretá el mensaje y devolvé SOLO el siguiente JSON válido:
 
 {
   "tipo": "gasto" | "ingreso",
@@ -25,63 +22,25 @@ Interpretá un gasto/ingreso financiero y devolvé SOLO JSON válido con:
   "fecha": "YYYY-MM-DD"
 }
 
-### CATEGORÍAS OFICIALES (elegir una EXACTA):
-- Kiosco
-- Supermercado
-- Salidas
-- Impuestos
-- Servicios
-- Mascota
-- Farmacia
-- Alquiler   (incluye alquiler, expensas, cochera)
-- Librería
-- Suscripciones
-- Tarjetas   (todas las tarjetas de crédito)
-- Compras    (incluye ropa, juguetes, tecnología)
-- Otros
+### CATEGORÍAS DISPONIBLES
+Kiosco, Supermercado, Salidas, Impuestos, Servicios, Mascota, Farmacia,
+Alquiler, Librería, Suscripciones, Tarjetas, Compras, Otros
 
-### MAPA DE PALABRAS CLAVE PARA CLASIFICAR:
+### REGLAS
+- La descripción NO debe incluir “hoy”, “ayer”, “pagué”, “gasté”.
+- Detectar fecha automáticamente (hoy/ayer/el lunes/fechas escritas).
+- salvo que se indique lo contrario siempre usar año corriente.
+- El monto debe ser número limpio.
+- La categoría debe ser EXACTAMENTE una del listado.
 
-Kiosco → kiosco, cigarrillos, puchos, golosinas, snacks  
-Supermercado → super, supermercado, chino, comida, alimentos, limpieza  
-Salidas → restaurante, cena, almuerzo afuera, salir a comer, bar, café  
-Impuestos → AFIP, ingresos brutos, IVA, patente, municipal  
-Servicios → gas, luz, agua, internet, cable, celular  
-Mascota → perro, Chispa, veterinaria, paseador, alimento de mascota  
-Farmacia → remedio, medicamentos, farmacia  
-Alquiler → alquiler, expensas, cochera  
-Librería → librería, útiles, cuadernos  
-Suscripciones → Netflix, Spotify, membresía, suscripción  
-Tarjetas → pago tarjeta, Mastercard, Visa, Naranja, Amex  
-Compras → ropa, juguetes, tecnología, indumentaria, celular, notebook  
-
-### DESCRIPCIÓN:
-Debe ser limpia y sin palabras como “hoy”, “ayer”, “pagué”, “gasté”.
-
-Ejemplos:
-- "Hoy pagué el servicio de gas 89000" → "Pago de gas"
-- "Compré juguetes para las chicas" → "Compra de juguetes"
-
-### MONTO:
-Debe parsearse aunque tenga puntos, comas o texto alrededor.
-
-### FECHA:
-Si el usuario menciona una fecha sin indicar año (ej: "hoy", "ayer", "el lunes", "3 de noviembre"),
-SIEMPRE usar el año actual del sistema, NO un año previo.
-{
-  "tipo": "...",
-  "descripcion": "...",
-  "categoria": "...",
-  "monto": ...,
-  "usd": ...,
-  "fecha": "YYYY-MM-DD"
-}
-
+### EJEMPLOS
+"Hoy pagué gas 89000" → gasto, Servicios, Pago de gas, 89000, fecha de hoy
+"Compré juguetes" → gasto, Compras, Compra de juguetes
+"Me pagaron 150000 del trabajo" → ingreso, Otros, Pago trabajo
 `;
 
     const chat = await groq.chat.completions.create({
       model: "llama-3.1-8b-instant",
-
       messages: [
         { role: "system", content: prompt },
         { role: "user", content: texto },
@@ -90,23 +49,13 @@ SIEMPRE usar el año actual del sistema, NO un año previo.
       max_tokens: 300,
     });
 
-    console.log("🧠 RAW RESPONSE:", chat);
+    const raw = chat.choices[0]?.message?.content?.trim();
 
-    const content = chat.choices?.[0]?.message?.content?.trim();
-
-    console.log("🧠 IA content:", content);
-
-    if (!content) {
-      throw new Error("La IA no devolvió contenido");
-    }
-
-    return new Response(content, {
+    return new Response(raw, {
       headers: { "Content-Type": "application/json" },
     });
 
   } catch (err: any) {
-    console.error("🔥 ERROR IA:", err);
-
     return new Response(
       JSON.stringify({ error: "Error procesando IA", detalle: String(err) }),
       { status: 500 }

@@ -1,9 +1,12 @@
 "use client";
 
-export default function WidgetDisponible({ balanceMes }: { balanceMes: number }) {
-  
+import { useApp } from "@/context/AppContext";
+
+export default function WidgetDisponible() {
+  const { dineroDisponible } = useApp();
+
   const color =
-    balanceMes >= 0 ? "text-emerald-600" : "text-rose-600";
+    dineroDisponible >= 0 ? "text-emerald-600" : "text-rose-600";
 
   return (
     <div className="p-5 rounded-2xl shadow bg-white">
@@ -12,8 +15,8 @@ export default function WidgetDisponible({ balanceMes }: { balanceMes: number })
       </h3>
 
       <p className={`text-4xl font-bold ${color}`}>
-        {balanceMes >= 0 ? "+" : "-"}$
-        {Math.abs(balanceMes).toLocaleString("es-AR")}
+        {dineroDisponible >= 0 ? "+" : "-"}$
+        {Math.abs(dineroDisponible).toLocaleString("es-AR")}
       </p>
 
       <p className="text-xs text-slate-400 mt-1">
