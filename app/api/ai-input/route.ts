@@ -1,3 +1,6 @@
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import Groq from "groq-sdk";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -69,31 +72,25 @@ RESPONDER SOLO EL JSON.
  Sin texto adicional.
 `;
 
-    const completion = await groq.chat.completions.create({
+    const response = await groq.chat.completions.create({
       model: "llama3-70b-8192",
       messages: [
-        {
-          role: "system",
-          content: prompt,
-        },
-        {
-          role: "user",
-          content: texto,
-        },
+        { role: "system", content: prompt },
+        { role: "user", content: texto }
       ],
-      temperature: 0.2,
+      temperature: 0.2
     });
 
-    const raw = completion.choices[0]?.message?.content || "{}";
+    const raw = response.choices[0]?.message?.content || "{}";
 
     return new Response(raw, {
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" }
     });
 
-  } catch (error) {
-    console.error(error);
-    return new Response(JSON.stringify({ error: "Ocurrió un error" }), {
-      status: 500,
+  } catch (err) {
+    console.error(err);
+    return new Response(JSON.stringify({ error: "Error procesando IA" }), {
+      status: 500
     });
   }
 }
