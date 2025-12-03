@@ -25,6 +25,7 @@ import { useAuth } from "./AuthContext";
 // -----------------------------------
 // TIPOS
 // -----------------------------------
+
 export type PaymentStatus = "pagado" | "falta" | "pospuesto";
 
 export interface ToPayItem {
@@ -67,8 +68,11 @@ interface AppContextType {
   clientes: Cliente[];
   ahorros: Ahorro[];
 
-  dineroDisponible: number;   // INGRESOS – GASTOS
-  balanceReal: number;        // INGRESOS – GASTOS – PENDIENTES
+  // Disponible: ingresos – gastos
+  dineroDisponible: number;
+
+  // Balance real: ingresos – gastos – pendientes (solo "falta")
+  balanceReal: number;
 
   loadingData: boolean;
 
@@ -93,6 +97,12 @@ interface AppContextType {
 }
 
 const AppContext = createContext<AppContextType | null>(null);
+
+// Helper para evitar concatenaciones tipo "0100200"
+function toNumber(value: any): number {
+  const n = Number(value);
+  return Number.isNaN(n) ? 0 : n;
+}
 
 // -----------------------------------
 // PROVIDER
@@ -122,6 +132,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setClientes([]);
       setCosasPorPagar([]);
       setAhorros([]);
+      setDineroDisponible(0);
+      setBalanceReal(0);
       setLoadingData(false);
       return;
     }
@@ -130,28 +142,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLoadingData(true);
 
     const unsubIngresos = onSnapshot(
-      query(collection(db, "usuarios", uid, "ingresos"), orderBy("fecha", "desc")),
-      snap => setIngresos(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Movimiento[])
+      query(
+        collection(db, "usuarios", uid, "ingresos"),
+        orderBy("fecha", "desc")
+      ),
+      (snap) =>
+        setIngresos(
+          snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Movimiento[]
+        )
     );
 
     const unsubGastos = onSnapshot(
-      query(collection(db, "usuarios", uid, "gastos"), orderBy("fecha", "desc")),
-      snap => setGastos(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Movimiento[])
+      query(
+        collection(db, "usuarios", uid, "gastos"),
+        orderBy("fecha", "desc")
+      ),
+      (snap) =>
+        setGastos(
+          snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Movimiento[]
+        )
     );
 
     const unsubClientes = onSnapshot(
       collection(db, "usuarios", uid, "clientes"),
-      snap => setClientes(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Cliente[])
+      (snap) =>
+        setClientes(
+          snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Cliente[]
+        )
     );
 
     const unsubPagar = onSnapshot(
       collection(db, "usuarios", uid, "cosasPorPagar"),
-      snap => setCosasPorPagar(snap.docs.map(d => ({ id: d.id, ...d.data() })) as ToPayItem[])
+      (snap) =>
+        setCosasPorPagar(
+          snap.docs.map((d) => ({ id: d.id, ...d.data() })) as ToPayItem[]
+        )
     );
 
     const unsubAhorros = onSnapshot(
       collection(db, "usuarios", uid, "ahorros"),
-      snap => setAhorros(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Ahorro[])
+      (snap) =>
+        setAhorros(
+          snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Ahorro[]
+        )
     );
 
     setLoadingData(false);
@@ -165,29 +198,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [user, loadingUser]);
 
-  // ---------- CALCULOS GLOBALES ----------
+  // ---------- CÁLCULOS GLOBALES ----------
   useEffect(() => {
-    const totalIngresos = ingresos.reduce((a, i) => a + (i.monto ?? 0), 0);
-    const totalGastos = gastos.reduce((a, g) => a + (g.monto ?? 0), 0);
+    const totalIngresos = ingresos.reduce(
+      (a, i) => a + toNumber(i.monto),
+      0
+    );
+
+    const totalGastos = gastos.reduce(
+      (a, g) => a + toNumber(g.monto),
+      0
+    );
 
     const totalPendientes = cosasPorPagar
-      .filter(c => c.status === "falta")
-      .reduce((a, c) => a + (c.monto ?? 0), 0);
+      .filter((c) => c.status === "falta")
+      .reduce((a, c) => a + toNumber(c.monto), 0);
 
-    setDineroDisponible(totalIngresos - totalGastos);        // 🟢 Disponible HOY
-    setBalanceReal(totalIngresos - totalGastos - totalPendientes); // 🔴 Balance total
+    // Disponible HOY: ingresos – gastos
+    setDineroDisponible(totalIngresos - totalGastos);
 
+    // Balance real: ingresos – gastos – pendientes (solo "falta")
+    setBalanceReal(totalIngresos - totalGastos - totalPendientes);
   }, [ingresos, gastos, cosasPorPagar]);
 
   // ---------- CRUD ----------
+
+  // INGRESOS
   async function agregarIngreso(data: Omit<Movimiento, "id">) {
     if (!user) return;
-    await addDoc(collection(db, "usuarios", user.uid, "ingresos"), data);
+
+    const payload: Omit<Movimiento, "id"> = {
+      ...data,
+      monto: toNumber((data as any).monto),
+    };
+
+    await addDoc(collection(db, "usuarios", user.uid, "ingresos"), payload);
   }
 
   async function editarIngreso(id: string, d: Partial<Movimiento>) {
     if (!user) return;
-    await updateDoc(doc(db, "usuarios", user.uid, "ingresos", id), d);
+
+    const payload: Partial<Movimiento> = {
+      ...d,
+      ...(d.monto !== undefined ? { monto: toNumber(d.monto) } : {}),
+    };
+
+    await updateDoc(
+      doc(db, "usuarios", user.uid, "ingresos", id),
+      payload
+    );
   }
 
   async function borrarIngreso(id: string) {
@@ -195,14 +254,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await deleteDoc(doc(db, "usuarios", user.uid, "ingresos", id));
   }
 
+  // GASTOS
   async function agregarGasto(data: Omit<Movimiento, "id">) {
     if (!user) return;
-    await addDoc(collection(db, "usuarios", user.uid, "gastos"), data);
+
+    const payload: Omit<Movimiento, "id"> = {
+      ...data,
+      monto: toNumber((data as any).monto),
+    };
+
+    await addDoc(collection(db, "usuarios", user.uid, "gastos"), payload);
   }
 
   async function editarGasto(id: string, d: Partial<Movimiento>) {
     if (!user) return;
-    await updateDoc(doc(db, "usuarios", user.uid, "gastos", id), d);
+
+    const payload: Partial<Movimiento> = {
+      ...d,
+      ...(d.monto !== undefined ? { monto: toNumber(d.monto) } : {}),
+    };
+
+    await updateDoc(
+      doc(db, "usuarios", user.uid, "gastos", id),
+      payload
+    );
   }
 
   async function borrarGasto(id: string) {
@@ -210,21 +285,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await deleteDoc(doc(db, "usuarios", user.uid, "gastos", id));
   }
 
+  // COSAS POR PAGAR
   async function agregarCosaPorPagar(data: Omit<ToPayItem, "id">) {
     if (!user) return;
-    await addDoc(collection(db, "usuarios", user.uid, "cosasPorPagar"), data);
+
+    const payload: Omit<ToPayItem, "id"> = {
+      ...data,
+      monto: toNumber((data as any).monto),
+    };
+
+    await addDoc(
+      collection(db, "usuarios", user.uid, "cosasPorPagar"),
+      payload
+    );
   }
 
   async function cambiarEstadoPago(id: string, estado: PaymentStatus) {
     if (!user) return;
 
-    const item = cosasPorPagar.find(c => c.id === id);
+    const item = cosasPorPagar.find((c) => c.id === id);
     const ref = doc(db, "usuarios", user.uid, "cosasPorPagar", id);
 
+    // Si pasa a "pagado" lo guardamos como gasto real
     if (estado === "pagado" && item) {
       await addDoc(collection(db, "usuarios", user.uid, "gastos"), {
         descripcion: item.nombre,
-        monto: item.monto,
+        monto: toNumber(item.monto),
         categoria: item.categoria ?? "Otros",
         fecha: new Date().toISOString().split("T")[0],
       });
@@ -233,6 +319,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await updateDoc(ref, { status: estado });
   }
 
+  // CLIENTES
   async function agregarCliente(data: Omit<Cliente, "id">) {
     if (!user) return;
     await addDoc(collection(db, "usuarios", user.uid, "clientes"), data);
@@ -240,7 +327,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   async function editarCliente(id: string, d: Partial<Cliente>) {
     if (!user) return;
-    await updateDoc(doc(db, "usuarios", user.uid, "clientes", id), d);
+    await updateDoc(
+      doc(db, "usuarios", user.uid, "clientes", id),
+      d
+    );
   }
 
   async function borrarCliente(id: string) {
@@ -248,6 +338,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await deleteDoc(doc(db, "usuarios", user.uid, "clientes", id));
   }
 
+  // AHORROS
   async function agregarAhorro(data: Omit<Ahorro, "id">) {
     if (!user) return;
     await addDoc(collection(db, "usuarios", user.uid, "ahorros"), data);
@@ -255,7 +346,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   async function editarAhorro(id: string, d: Partial<Ahorro>) {
     if (!user) return;
-    await updateDoc(doc(db, "usuarios", user.uid, "ahorros", id), d);
+    await updateDoc(
+      doc(db, "usuarios", user.uid, "ahorros", id),
+      d
+    );
   }
 
   async function borrarAhorro(id: string) {
@@ -304,6 +398,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 export function useApp() {
   const ctx = useContext(AppContext);
-  if (!ctx) throw new Error("❌ useApp debe ir dentro de <AppProvider>");
+  if (!ctx) throw new Error(" useApp debe ir dentro de <AppProvider>");
   return ctx;
 }

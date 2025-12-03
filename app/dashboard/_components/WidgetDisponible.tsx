@@ -5,8 +5,10 @@ import { useApp } from "@/context/AppContext";
 export default function WidgetDisponible() {
   const { dineroDisponible } = useApp();
 
-  const color =
-    dineroDisponible >= 0 ? "text-emerald-600" : "text-rose-600";
+  const bruto = Number(dineroDisponible ?? 0);
+  const esPositivo = bruto >= 0;
+  const color = esPositivo ? "text-emerald-600" : "text-rose-600";
+  const monto = Math.abs(bruto).toLocaleString("es-AR");
 
   return (
     <div className="p-5 rounded-2xl shadow bg-white">
@@ -15,12 +17,11 @@ export default function WidgetDisponible() {
       </h3>
 
       <p className={`text-4xl font-bold ${color}`}>
-        {dineroDisponible >= 0 ? "+" : "-"}$
-        {Math.abs(dineroDisponible).toLocaleString("es-AR")}
+        {esPositivo ? "+" : "-"}${monto}
       </p>
 
       <p className="text-xs text-slate-400 mt-1">
-        (Ingresos – Gastos – Pendientes)
+        (Ingresos – Gastos)
       </p>
     </div>
   );

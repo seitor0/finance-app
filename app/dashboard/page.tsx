@@ -24,16 +24,18 @@ export default function DashboardPage() {
     agregarIngreso,
     agregarGasto,
     agregarAhorro,
-    dineroDisponible,
   } = useApp();
 
   // ============================
-  // FECHA ACTUAL
+  // FECHA ACTUAL (YYYY-MM)
   // ============================
   const ahora = new Date();
   const añoActual = ahora.getFullYear();
   const mesActualNumero = ahora.getMonth() + 1;
-  const mesActualKey = `${añoActual}-${String(mesActualNumero).padStart(2, "0")}`;
+  const mesActualKey = `${añoActual}-${String(mesActualNumero).padStart(
+    2,
+    "0"
+  )}`;
 
   // ============================
   // INGRESOS DEL MES
@@ -42,7 +44,10 @@ export default function DashboardPage() {
     () =>
       ingresos
         .filter((i: any) => i.fecha?.startsWith(mesActualKey))
-        .reduce((acc: number, i: any) => acc + Number(i.monto ?? 0), 0),
+        .reduce(
+          (acc: number, i: any) => acc + Number(i.monto ?? 0),
+          0
+        ),
     [ingresos, mesActualKey]
   );
 
@@ -53,12 +58,15 @@ export default function DashboardPage() {
     () =>
       gastos
         .filter((g: any) => g.fecha?.startsWith(mesActualKey))
-        .reduce((acc: number, g: any) => acc + Number(g.monto ?? 0), 0),
+        .reduce(
+          (acc: number, g: any) => acc + Number(g.monto ?? 0),
+          0
+        ),
     [gastos, mesActualKey]
   );
 
   // ============================
-  // PENDIENTES DEL MES
+  // PENDIENTES DEL MES (solo "falta")
   // ============================
   const totalPendientesMes = useMemo(
     () =>
@@ -66,14 +74,22 @@ export default function DashboardPage() {
         .filter(
           (c: any) =>
             c.status === "falta" &&
-            (!c.vencimiento || String(c.vencimiento).startsWith(mesActualKey))
+            (!c.vencimiento ||
+              String(c.vencimiento).startsWith(mesActualKey))
         )
-        .reduce((acc: number, c: any) => acc + Number(c.monto ?? 0), 0),
+        .reduce(
+          (acc: number, c: any) => acc + Number(c.monto ?? 0),
+          0
+        ),
     [cosasPorPagar, mesActualKey]
   );
 
-  const balanceMes =
-    totalIngresosMes - totalGastosMes - totalPendientesMes;
+  // "Ahorro real" del mes = ingresos - gastos (solo lo ya pagado)
+  const ahorroRealMes = Math.max(totalIngresosMes - totalGastosMes, 0);
+
+  // Objetivos
+  const ahorroDeseado = totalIngresosMes * 0.2;
+  const gastoIdeal = totalIngresosMes * 0.5;
 
   // ============================
   // ÚLTIMOS MOVIMIENTOS
@@ -135,7 +151,7 @@ export default function DashboardPage() {
 
       // GASTO
       if (json.tipo === "gasto") {
-        agregarGasto({
+        await agregarGasto({
           descripcion: json.descripcion,
           monto: json.monto,
           fecha: json.fecha,
@@ -145,7 +161,7 @@ export default function DashboardPage() {
 
       // INGRESO
       if (json.tipo === "ingreso") {
-        agregarIngreso({
+        await agregarIngreso({
           descripcion: json.descripcion,
           monto: json.monto,
           fecha: json.fecha,
@@ -154,7 +170,7 @@ export default function DashboardPage() {
 
       // AHORRO USD
       if (json.tipo === "ahorro") {
-        agregarAhorro({
+        await agregarAhorro({
           usd: json.usd,
           fecha: json.fecha,
           notas: "Ahorro por IA",
@@ -162,7 +178,7 @@ export default function DashboardPage() {
       }
 
       if (json.tipo === "compra-usd") {
-        agregarAhorro({
+        await agregarAhorro({
           usd: json.usd,
           fecha: json.fecha,
           notas: "Compra de dólares",
@@ -170,7 +186,7 @@ export default function DashboardPage() {
       }
 
       if (json.tipo === "venta-usd") {
-        agregarAhorro({
+        await agregarAhorro({
           usd: -json.usd,
           fecha: json.fecha,
           notas: "Venta de dólares",
@@ -190,12 +206,8 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 fade-up">
-
-      {/* ============================
-          FILA 1 — Balance + Rings
-      ============================ */}
+      {/* ============================ FILA 1 — Balance + Rings ============================ */}
       <section className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)]">
-
         {/* IZQUIERDA */}
         <div className="glass-card">
           <div className="flex items-start justify-between mb-6">
@@ -203,21 +215,20 @@ export default function DashboardPage() {
               <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                 Este mes
               </p>
-              <h2 className="text-2xl font-semibold mt-1">Balance general</h2>
+              <h2 className="text-2xl font-semibold mt-1">
+                Balance general
+              </h2>
               <p className="text-sm text-slate-500 mt-1">
                 Ingresos, gastos, pendientes y ahorro actual.
               </p>
             </div>
 
+            {/* Acá mostramos SOLO los gastos del mes */}
             <div className="text-right">
-              <p className="text-xs text-slate-400">Balance</p>
-              <p
-                className={`text-3xl font-semibold ${
-                  balanceMes >= 0 ? "text-emerald-600" : "text-rose-600"
-                }`}
-              >
-                {balanceMes >= 0 ? "+" : "-"}$
-                {Math.abs(balanceMes).toLocaleString("es-AR")}
+              <p className="text-xs text-slate-400">Gastos del mes</p>
+              <p className="text-3xl font-semibold text-rose-600">
+                $
+                {totalGastosMes.toLocaleString("es-AR")}
               </p>
             </div>
           </div>
@@ -235,16 +246,19 @@ export default function DashboardPage() {
 
         {/* DERECHA */}
         <div className="space-y-4">
-
           {/* OBJETIVOS */}
           <div className="glass-card">
-            <h3 className="text-lg font-semibold mb-4">Objetivos del mes</h3>
+            <h3 className="text-lg font-semibold mb-4">
+              Objetivos del mes
+            </h3>
 
             <div className="space-y-3 text-sm">
+              {/* Ahorro ideal */}
               <div className="flex items-center justify-between">
                 <span>Ahorro deseado</span>
                 <span className="font-semibold">
-                  ${Math.round(totalIngresosMes * 0.2).toLocaleString("es-AR")}
+                  $
+                  {Math.round(ahorroDeseado).toLocaleString("es-AR")}
                 </span>
               </div>
 
@@ -253,11 +267,9 @@ export default function DashboardPage() {
                   className="h-full bg-emerald-500 transition-all"
                   style={{
                     width:
-                      totalIngresosMes > 0
+                      ahorroDeseado > 0
                         ? `${Math.min(
-                            Math.max(balanceMes, 0) /
-                              (totalIngresosMes * 0.2 || 1) *
-                              100,
+                            (ahorroRealMes / (ahorroDeseado || 1)) * 100,
                             100
                           )}%`
                         : "0%",
@@ -265,10 +277,12 @@ export default function DashboardPage() {
                 />
               </div>
 
+              {/* Gasto ideal */}
               <div className="flex items-center justify-between mt-4">
                 <span>Gasto ideal</span>
                 <span className="font-semibold">
-                  ${Math.round(totalIngresosMes * 0.5).toLocaleString("es-AR")}
+                  $
+                  {Math.round(gastoIdeal).toLocaleString("es-AR")}
                 </span>
               </div>
 
@@ -277,10 +291,9 @@ export default function DashboardPage() {
                   className="h-full bg-rose-500 transition-all"
                   style={{
                     width:
-                      totalIngresosMes > 0
+                      gastoIdeal > 0
                         ? `${Math.min(
-                            totalGastosMes /
-                              (totalIngresosMes * 0.5 || 1) *
+                            (totalGastosMes / (gastoIdeal || 1)) *
                               100,
                             100
                           )}%`
@@ -293,7 +306,9 @@ export default function DashboardPage() {
 
           {/* AHORRO USD */}
           <div className="glass-card">
-            <h3 className="text-lg font-semibold mb-1">Ahorro en dólares</h3>
+            <h3 className="text-lg font-semibold mb-1">
+              Ahorro en dólares
+            </h3>
             <p className="text-sm text-slate-500 mb-4">
               Total acumulado en tus ahorros.
             </p>
@@ -307,18 +322,16 @@ export default function DashboardPage() {
             <WidgetCosasPorPagar />
             <WidgetDisponible />
           </div>
-
         </div>
       </section>
 
-      {/* ============================
-          FILA 2 — IA + Finanzas
-      ============================ */}
+      {/* ============================ FILA 2 — IA + Finanzas ============================ */}
       <section className="grid gap-6 lg:grid-cols-2">
-        
         {/* IA INPUT */}
         <div className="glass-card">
-          <h2 className="text-lg font-semibold mb-3">Cargar con IA</h2>
+          <h2 className="text-lg font-semibold mb-3">
+            Cargar con IA
+          </h2>
           <p className="text-sm text-slate-500 mb-4">
             Escribí un gasto o ingreso y lo interpretamos por vos.
           </p>
@@ -352,9 +365,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* ============================
-          FILA 3 — Últimos movimientos
-      ============================ */}
+      {/* ============================ FILA 3 — Últimos movimientos ============================ */}
       <section className="glass-card">
         <h2 className="text-lg font-semibold mb-4">
           Últimos movimientos (vista tarjeta)
@@ -368,11 +379,12 @@ export default function DashboardPage() {
           )}
 
           {movimientos.map((m) => {
-            const monto =
+            const bruto =
               m.monto ??
               (m as any).arsIngreso ??
               (m as any).arsGasto ??
               0;
+            const monto = Number(bruto) || 0;
 
             return (
               <div
@@ -387,7 +399,9 @@ export default function DashboardPage() {
                   <p className="text-xs uppercase tracking-[0.22em] opacity-80">
                     {m.tipo}
                   </p>
-                  <p className="text-sm font-semibold">{m.descripcion}</p>
+                  <p className="text-sm font-semibold">
+                    {m.descripcion}
+                  </p>
                   <p className="text-[11px] opacity-80 mt-1">
                     {new Date(m.fecha).toLocaleDateString("es-AR", {
                       day: "2-digit",
@@ -405,7 +419,6 @@ export default function DashboardPage() {
           })}
         </div>
       </section>
-
     </div>
   );
 }
