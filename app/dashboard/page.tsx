@@ -121,12 +121,14 @@ export default function DashboardPage() {
       setRespuesta(json);
 
       if (json.tipo === "gasto") {
-        agregarGasto({
-          descripcion: json.descripcion,
-          monto: json.monto,
-          fecha: json.fecha,
-        });
-      }
+  agregarGasto({
+    descripcion: json.descripcion,
+    monto: json.monto,
+    fecha: json.fecha,
+    categoria: json.categoria,  // ← AHORA SÍ SE GUARDA LA CATEGORÍA
+  });
+}
+
 
       if (json.tipo === "ingreso") {
         agregarIngreso({
