@@ -6,10 +6,11 @@ import FormPorPagar from "./FormPorPagar";
 
 export default function CosasPorPagarPage() {
   const {
-    cosasPorPagar,
-    agregarCosaPorPagar,
-    cambiarEstadoPago,
-  } = useApp();
+  cosasPorPagar,
+  agregarCosaPorPagar,
+  cambiarEstadoPago,
+  editarCosaPorPagar, // 👈 nuevo
+} = useApp();
 
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
@@ -90,20 +91,19 @@ export default function CosasPorPagarPage() {
 
       {/* FORMULARIO */}
       {showForm && (
-        <FormPorPagar
-          editItem={editItem}
-          onClose={() => setShowForm(false)}
-          onSave={(data) => {
-            if (editItem) {
-              // EDITAR → solo cambia el estado
-              cambiarEstadoPago(editItem.id, data.status);
-            } else {
-              // NUEVO
-              agregarCosaPorPagar(data);
-            }
-            setShowForm(false);
-          }}
-        />
+       <FormPorPagar
+  editItem={editItem}
+  onClose={() => setShowForm(false)}
+  onSave={async (data) => {
+    if (editItem) {
+      await editarCosaPorPagar(editItem.id, data);
+    } else {
+      await agregarCosaPorPagar(data);
+    }
+    setShowForm(false);
+  }}
+/>
+
       )}
     </div>
   );

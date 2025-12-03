@@ -32,14 +32,15 @@ export default function FormPorPagar({
 
   // Cargar datos en modo edición
   useEffect(() => {
-    if (editItem) {
-      setNombre(editItem.nombre || "");
-      setCategoria(editItem.categoria || "");
-      setMonto(editItem.monto || "");
-      setVencimiento(editItem.vencimiento || "");
-      setStatus(editItem.status || "falta");
-    }
-  }, [editItem]);
+  if (!editItem) {
+    setNombre("");
+    setCategoria("");
+    setMonto("");
+    setVencimiento("");
+    setStatus("falta");
+  }
+}, [editItem]);
+
 
   function submit(e: any) {
     e.preventDefault();
