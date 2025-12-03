@@ -19,10 +19,10 @@ export default function FormularioIngreso({ onClose, editItem, onSave }) {
     e.preventDefault();
 
     const data = {
-      id: editItem?.id || Date.now(),
       descripcion,
-      monto,
+      monto: Number(monto),    // ← CORRECCIÓN CLAVE
       fecha,
+      categoria: editItem?.categoria || "General", // opcional
     };
 
     onSave(data);

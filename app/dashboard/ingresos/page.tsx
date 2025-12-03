@@ -9,6 +9,23 @@ export default function IngresosPage() {
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
 
+  const handleSave = (data) => {
+    const payload = {
+      descripcion: data.descripcion,
+      monto: Number(data.monto),   // ← aseguramos número siempre
+      fecha: data.fecha,
+      categoria: data.categoria || "General",
+    };
+
+    if (editItem) {
+      editarIngreso(editItem.id, payload);
+    } else {
+      agregarIngreso(payload);
+    }
+
+    setShowForm(false);
+  };
+
   return (
     <div>
       <h1 className="text-3xl font-semibold mb-6">Ingresos</h1>
@@ -42,11 +59,11 @@ export default function IngresosPage() {
             </tr>
           )}
 
-          {ingresos.map((item, i) => (
-            <tr key={i} className="border-b">
+          {ingresos.map((item) => (
+            <tr key={item.id} className="border-b">
               <td className="p-3">{item.fecha}</td>
               <td className="p-3">{item.descripcion}</td>
-              <td className="p-3">${item.monto}</td>
+              <td className="p-3">${item.monto.toLocaleString("es-AR")}</td>
               <td className="p-3 flex gap-2">
                 <button
                   className="px-3 py-1 bg-yellow-500 text-white rounded"
@@ -74,11 +91,7 @@ export default function IngresosPage() {
         <FormularioIngreso
           onClose={() => setShowForm(false)}
           editItem={editItem}
-          onSave={(data) => {
-            if (editItem) editarIngreso(editItem.id, data);
-else agregarIngreso(data);
-            setShowForm(false);
-          }}
+          onSave={handleSave}
         />
       )}
     </div>
