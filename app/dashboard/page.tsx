@@ -288,7 +288,8 @@ export default function DashboardPage() {
           {/* ESTE ERA EL DIV QUE FALTABA CERRAR 👇 */}
           <div className="grid grid-cols-2 gap-6 w-[95%] mx-auto">
             <WidgetCosasPorPagar />
-            <WidgetDisponible />
+           <WidgetDisponible balanceMes={balanceMes} />
+
           </div>
 
         </div> {/* ← ESTE ERA EL CIERRE FALTANTE */}

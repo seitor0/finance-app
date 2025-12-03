@@ -66,11 +66,8 @@ Ejemplos:
 Debe parsearse aunque tenga puntos, comas o texto alrededor.
 
 ### FECHA:
-- “hoy” → fecha actual
-- “ayer” → fecha actual - 1 día
-- “el lunes/martes/etc” → calcular el último día mencionado
-- “12 de noviembre” → convertir a YYYY-MM-DD
-- Si no hay fecha → usar fecha actual
+Si el usuario menciona una fecha sin indicar año (ej: "hoy", "ayer", "el lunes", "3 de noviembre"),
+SIEMPRE usar el año actual del sistema, NO un año previo.
 {
   "tipo": "...",
   "descripcion": "...",
