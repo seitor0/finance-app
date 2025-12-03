@@ -28,17 +28,13 @@ export default function DashboardPage() {
     setDineroDisponible,
   } = useApp();
 
-  // ======================
-  // 🧠 FECHA ACTUAL + KEY DEL MES: "YYYY-MM"
-  // ======================
+  // Fecha actual → clave YYYY-MM
   const ahora = new Date();
   const añoActual = ahora.getFullYear();
-  const mesActualNumero = ahora.getMonth() + 1; // 1..12
-  const mesActualKey = `${añoActual}-${String(mesActualNumero).padStart(2, "0")}`; // → "2025-12"
+  const mesActualNumero = ahora.getMonth() + 1;
+  const mesActualKey = `${añoActual}-${String(mesActualNumero).padStart(2, "0")}`;
 
-  // ======================
-  // 🧮 INGRESOS DEL MES
-  // ======================
+  // Ingresos del mes
   const totalIngresosMes = useMemo(
     () =>
       ingresos
@@ -47,9 +43,7 @@ export default function DashboardPage() {
     [ingresos, mesActualKey]
   );
 
-  // ======================
-  // 🧮 GASTOS DEL MES
-  // ======================
+  // Gastos
   const totalGastosMes = useMemo(
     () =>
       gastos
@@ -58,9 +52,7 @@ export default function DashboardPage() {
     [gastos, mesActualKey]
   );
 
-  // ======================
-  // 🧮 PENDIENTES DEL MES
-  // ======================
+  // Pendientes
   const totalPendientesMes = useMemo(
     () =>
       cosasPorPagar
@@ -73,14 +65,10 @@ export default function DashboardPage() {
     [cosasPorPagar, mesActualKey]
   );
 
-  // ======================
-  // 🧮 BALANCE FINAL DEL MES
-  // ======================
-  const balanceMes = totalIngresosMes - totalGastosMes - totalPendientesMes;
+  const balanceMes =
+    totalIngresosMes - totalGastosMes - totalPendientesMes;
 
-  // ======================
-  // LISTA DE MOVIMIENTOS (últimos 5)
-  // ======================
+  // Últimos movimientos
   const movimientos: MovimientoUI[] = useMemo(() => {
     const lista: MovimientoUI[] = [
       ...ingresos.map((i: any) => ({
@@ -103,9 +91,7 @@ export default function DashboardPage() {
       .slice(0, 5);
   }, [ingresos, gastos]);
 
-  // ======================
-  // AHORROS USD TOTAL
-  // ======================
+  // Ahorros USD
   const totalUSD = useMemo(
     () =>
       (ahorros ?? []).reduce(
@@ -115,9 +101,7 @@ export default function DashboardPage() {
     [ahorros]
   );
 
-  // ======================
-  // IA PARA INGRESOS/GASTOS
-  // ======================
+  // IA
   const [texto, setTexto] = useState("");
   const [loading, setLoading] = useState(false);
   const [respuesta, setRespuesta] = useState<any>(null);
@@ -185,31 +169,29 @@ export default function DashboardPage() {
     }
   }
 
-  // ==========================================================
-  // =====================     RENDER     ====================
-  // ==========================================================
+  // ============================================
+  // ===============  RENDER UI  ================
+  // ============================================
+
   return (
     <div className="space-y-8 fade-up">
-      
-      {/* FILA 1: resumen + objetivos + ahorro */}
+
+      {/* FILA 1 */}
       <section className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)]">
-        
-        {/* RESUMEN IZQUIERDA */}
+
+        {/* IZQUIERDA */}
         <div className="glass-card">
           <div className="flex items-start justify-between mb-6">
             <div>
               <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                 Este mes
               </p>
-              <h2 className="text-2xl font-semibold tracking-tight mt-1">
-                Balance general
-              </h2>
+              <h2 className="text-2xl font-semibold mt-1">Balance general</h2>
               <p className="text-sm text-slate-500 mt-1">
                 Ingresos, gastos, pendientes y ahorro actual.
               </p>
             </div>
 
-            {/* BALANCE NUMÉRICO */}
             <div className="text-right">
               <p className="text-xs text-slate-400">Balance</p>
               <p
@@ -223,33 +205,28 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* ANILLOS */}
           <AppleRings
             ingresosMes={totalIngresosMes}
             gastosMes={totalGastosMes}
             pendientesMes={totalPendientesMes}
           />
 
-          {/* Lista mini de pendientes */}
           <div className="mt-8">
             <WidgetCosasPorPagar />
           </div>
         </div>
 
-        {/* COLUMNA DERECHA */}
+        {/* DERECHA */}
         <div className="space-y-4">
-          {/* OBJETIVOS */}
+
           <div className="glass-card">
-            <h3 className="text-lg font-semibold mb-4">
-              Objetivos del mes
-            </h3>
+            <h3 className="text-lg font-semibold mb-4">Objetivos del mes</h3>
 
             <div className="space-y-3 text-sm">
-              {/* Ahorro ideal */}
               <div className="flex items-center justify-between">
                 <span>Ahorro deseado</span>
                 <span className="font-semibold">
-                  ${(Math.round(totalIngresosMes * 0.2)).toLocaleString("es-AR")}
+                  ${Math.round(totalIngresosMes * 0.2).toLocaleString("es-AR")}
                 </span>
               </div>
 
@@ -270,11 +247,10 @@ export default function DashboardPage() {
                 />
               </div>
 
-              {/* Gasto ideal */}
               <div className="flex items-center justify-between mt-4">
                 <span>Gasto ideal</span>
                 <span className="font-semibold">
-                  ${(Math.round(totalIngresosMes * 0.5)).toLocaleString("es-AR")}
+                  ${Math.round(totalIngresosMes * 0.5).toLocaleString("es-AR")}
                 </span>
               </div>
 
@@ -297,11 +273,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* AHORRO USD */}
           <div className="glass-card">
-            <h3 className="text-lg font-semibold mb-1">
-              Ahorro en dólares
-            </h3>
+            <h3 className="text-lg font-semibold mb-1">Ahorro en dólares</h3>
             <p className="text-sm text-slate-500 mb-4">
               Total acumulado en tus ahorros.
             </p>
@@ -310,20 +283,18 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* WIDGETS ABAJO */}
-          <div className="grid grid-cols-3 gap-4">
+          {/* ESTE ERA EL DIV QUE FALTABA CERRAR 👇 */}
+          <div className="grid grid-cols-2 gap-6 w-[95%] mx-auto">
             <WidgetCosasPorPagar />
             <WidgetDisponible />
           </div>
-        </div>
+
+        </div> {/* ← ESTE ERA EL CIERRE FALTANTE */}
+
       </section>
 
-      {/* ================================================
-          FILA 2: IA + Finanzas del mes
-      ================================================ */}
+      {/* FILA 2 */}
       <section className="grid gap-6 lg:grid-cols-2">
-        
-        {/* IA */}
         <div className="glass-card">
           <h2 className="text-lg font-semibold mb-3">Cargar con IA</h2>
           <p className="text-sm text-slate-500 mb-4">
@@ -352,15 +323,12 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Finanzas del mes */}
         <div className="glass-card">
           <FinanzasDelMes ingresos={ingresos} gastos={gastos} />
         </div>
       </section>
 
-      {/* ================================================
-          FILA 3: ÚLTIMOS MOVIMIENTOS
-      ================================================ */}
+      {/* FILA 3 */}
       <section className="glass-card">
         <h2 className="text-lg font-semibold mb-4">
           Últimos movimientos (vista tarjeta)

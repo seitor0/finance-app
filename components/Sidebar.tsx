@@ -2,16 +2,58 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PiggyBank, ListTodo } from "lucide-react";
+
+// Íconos heroicons + lucide
+import {
+  HomeIcon,
+  ArrowDownCircleIcon,
+  ArrowUpCircleIcon,
+  Cog6ToothIcon,
+  UserGroupIcon,
+} from "@heroicons/react/24/outline";
+
+import {
+  PiggyBank,
+  ListTodo,
+  DollarSign,
+} from "lucide-react";
 
 const menu = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Ingresos", href: "/dashboard/ingresos" },
-  { label: "Gastos", href: "/dashboard/gastos" },
-  { label: "Ahorros", href: "/dashboard/ahorros", icon: PiggyBank },
-  { label: "Clientes", href: "/dashboard/clientes" },
-  { label: "Cosas por pagar", href: "/dashboard/cosas-por-pagar", icon: ListTodo },
-  { label: "Configuración", href: "/dashboard/configuracion" },
+  {
+    label: "Dashboard",
+    href: "/dashboard",
+    icon: HomeIcon,
+  },
+  {
+    label: "Ingresos",
+    href: "/dashboard/ingresos",
+    icon: ArrowUpCircleIcon,
+  },
+  {
+    label: "Gastos",
+    href: "/dashboard/gastos",
+    icon: ArrowDownCircleIcon,
+  },
+  {
+    label: "Ahorros",
+    href: "/dashboard/ahorros",
+    icon: PiggyBank,
+  },
+  {
+    label: "Clientes",
+    href: "/dashboard/clientes",
+    icon: UserGroupIcon,
+  },
+  {
+    label: "Cosas por pagar",
+    href: "/dashboard/cosas-por-pagar",
+    icon: ListTodo,
+  },
+  {
+    label: "Configuración",
+    href: "/dashboard/configuracion",
+    icon: Cog6ToothIcon,
+  },
 ];
 
 export default function Sidebar() {
@@ -32,16 +74,16 @@ export default function Sidebar() {
               key={item.href}
               href={item.href}
               className={`
-                flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition
+                flex items-center gap-3 px-4 py-2 rounded-lg text-[15px] font-medium transition
                 ${
                   active
-                    ? "bg-gray-700 text-white"
+                    ? "bg-gray-700 text-white shadow-sm"
                     : "text-gray-400 hover:bg-gray-800 hover:text-white"
                 }
               `}
             >
-              {Icon && <Icon size={16} />}
-              {item.label}
+              {Icon && <Icon className="w-5 h-5 flex-none" />}
+              <span>{item.label}</span>
             </Link>
           );
         })}
