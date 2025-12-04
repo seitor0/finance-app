@@ -16,11 +16,12 @@ import {
 } from "firebase/auth";
 
 import { auth } from "@/lib/firebase";
+import { useRouter } from "next/navigation";
 
 type AuthContextType = {
   user: any;
-  loadingUser: boolean;      // 👈 Estado real de Firebase Auth
-  loginLoading: boolean;     // 👈 Loading solo del login manual
+  loadingUser: boolean;
+  loginLoading: boolean;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -28,26 +29,41 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<any>(null);
-  const [loadingUser, setLoadingUser] = useState(true);   // 👈 Firebase inicializando
-  const [loginLoading, setLoginLoading] = useState(false); // 👈 Botón de login cargando
+  const router = useRouter();
 
-  // 🔥 Detecta siempre si hay usuario logueado (Firebase AUTH)
+  const [user, setUser] = useState<any>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  // 🔥 Detecta usuario logueado
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (currentUser) => {
-      console.log("🔐 Usuario detectado:", currentUser);
+    const unsub = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      setLoadingUser(false); // 👈 Termina carga inicial de Firebase
+
+      // Si hay usuario → actualizar cookie para middleware
+      if (currentUser) {
+        const token = await currentUser.getIdToken();
+        document.cookie = `authToken=${token}; path=/;`;
+      }
+
+      setLoadingUser(false);
     });
 
     return () => unsub();
   }, []);
 
+  // 🔐 LOGIN GOOGLE
   async function loginWithGoogle() {
     try {
       setLoginLoading(true);
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+
+      // Guardamos cookie para middleware
+      const token = await result.user.getIdToken();
+      document.cookie = `authToken=${token}; path=/;`;
+
+      router.replace("/dashboard");
     } catch (error) {
       console.error("Error en login:", error);
     } finally {
@@ -55,9 +71,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // 🚪 LOGOUT
   async function logout() {
     try {
       await signOut(auth);
+
+      // borrar cookie
+      document.cookie = "authToken=; path=/; max-age=0;";
+
+      router.replace("/login");
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
     }

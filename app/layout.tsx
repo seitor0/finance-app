@@ -1,25 +1,32 @@
-"use client"; 
-import "./globals.css"; 
-import { AuthProvider } from "@/context/AuthContext"; 
-import { AppProvider } from "@/context/AppContext"; 
+// ❌ NO usar "use client" aquí
 
-export default function RootLayout({ 
-  children, 
+import "./globals.css";
+import { AuthProvider } from "@/context/AuthContext";
+import { AppProvider } from "@/context/AppContext";
 
-}: { 
+export const metadata = {
+  title: "GastAPP",
+  description: "¿Dónde va mi plata?",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
+};
+
+
+export default function RootLayout({
+  children,
+}: {
   children: React.ReactNode;
-
- }) { 
-  return ( 
-<html lang="es"> 
-<body> 
-  <AuthProvider> 
-  <AppProvider> 
-  {children} 
-</AppProvider> 
-</AuthProvider> 
-</body> 
-</html> 
-
-); 
+}) {
+  return (
+    <html lang="es">
+      <body>
+        {/* Providers deben ir dentro del <body>, nunca fuera */}
+        <AuthProvider>
+          <AppProvider>{children}</AppProvider>
+        </AuthProvider>
+      </body>
+    </html>
+  );
 }

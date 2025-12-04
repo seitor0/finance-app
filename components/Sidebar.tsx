@@ -1,97 +1,56 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-
-// Íconos heroicons + lucide
-import {
-  HomeIcon,
-  ArrowDownCircleIcon,
-  ArrowUpCircleIcon,
-  Cog6ToothIcon,
-  UserGroupIcon,
-} from "@heroicons/react/24/outline";
-
-import {
-  PiggyBank,
-  ListTodo,
-  DollarSign,
-} from "lucide-react";
-
-const menu = [
-  {
-    label: "Dashboard",
-    href: "/dashboard",
-    icon: HomeIcon,
-  },
-  {
-    label: "Ingresos",
-    href: "/dashboard/ingresos",
-    icon: ArrowUpCircleIcon,
-  },
-  {
-    label: "Gastos",
-    href: "/dashboard/gastos",
-    icon: ArrowDownCircleIcon,
-  },
-  {
-    label: "Ahorros",
-    href: "/dashboard/ahorros",
-    icon: PiggyBank,
-  },
-  {
-    label: "Clientes",
-    href: "/dashboard/clientes",
-    icon: UserGroupIcon,
-  },
-  {
-    label: "Cosas por pagar",
-    href: "/dashboard/cosas-por-pagar",
-    icon: ListTodo,
-  },
-  {
-  label: "Cosas por cobrar",
-  href: "/dashboard/cosas-por-cobrar",
-  icon: DollarSign,
-},
-  {
-    label: "Configuración",
-    href: "/dashboard/configuracion",
-    icon: Cog6ToothIcon,
-  },
-];
+import SidebarLink from "@/components/SidebarLink";
+import { GastAPPLogo } from "@/components/GastAPPLogo";
 
 export default function Sidebar() {
-  const path = usePathname();
-
   return (
-    <aside className="w-64 bg-gray-900 text-gray-100 h-screen p-6 shadow-xl overflow-y-auto">
-      <h1 className="text-2xl font-bold mb-1 tracking-tight">FinanceApp</h1>
-      <p className="text-xs text-gray-400 mb-8 -mt-1">¿Dónde va mi plata?</p>
+    <aside className="w-64 h-screen bg-[#111827] text-slate-200 p-6 flex flex-col gap-6 border-r border-white/10">
 
-      <nav className="flex flex-col gap-2">
-        {menu.map((item) => {
-          const Icon = item.icon;
-          const active = path === item.href;
+      {/* LOGO + TÍTULO (COMPACTO, ELEGANTE) */}
+      <div className="flex items-center gap-3 mb-2">
+        <GastAPPLogo size={34} />
+        <div>
+          <h1 className="text-xl font-semibold leading-tight">GastAPP</h1>
+          <p className="text-xs text-slate-400 -mt-1">¿Dónde va mi plata?</p>
+        </div>
+      </div>
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`
-                flex items-center gap-3 px-4 py-2 rounded-lg text-[15px] font-medium transition
-                ${
-                  active
-                    ? "bg-gray-700 text-white shadow-sm"
-                    : "text-gray-400 hover:bg-gray-800 hover:text-white"
-                }
-              `}
-            >
-              {Icon && <Icon className="w-5 h-5 flex-none" />}
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
+      {/* NAV */}
+      <nav className="flex flex-col gap-1">
+
+        <SidebarLink href="/dashboard" icon="home">
+          Dashboard
+        </SidebarLink>
+
+        <SidebarLink href="/dashboard/ingresos" icon="arrow-up">
+          Ingresos
+        </SidebarLink>
+
+        <SidebarLink href="/dashboard/gastos" icon="arrow-down">
+          Gastos
+        </SidebarLink>
+
+        <SidebarLink href="/dashboard/ahorros" icon="piggy-bank">
+          Ahorros
+        </SidebarLink>
+
+        <SidebarLink href="/dashboard/clientes" icon="users">
+          Clientes
+        </SidebarLink>
+
+        <SidebarLink href="/dashboard/cosas-por-pagar" icon="credit-card">
+          Cosas por pagar
+        </SidebarLink>
+
+        <SidebarLink href="/dashboard/cosas-por-cobrar" icon="dollar">
+          Cosas por cobrar
+        </SidebarLink>
+
+        <SidebarLink href="/dashboard/configuracion" icon="settings">
+          Configuración
+        </SidebarLink>
+
       </nav>
     </aside>
   );

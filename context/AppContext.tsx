@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+
 import {
   collection,
   onSnapshot,
@@ -18,14 +19,15 @@ import {
   doc,
   getDoc,
 } from "firebase/firestore";
+
 import { db } from "@/lib/firebase";
 import { useAuth } from "./AuthContext";
 
-
-// -----------------------------------
+// =======================================================
 // TIPOS
-// -----------------------------------
+// =======================================================
 export type PaymentStatus = "pagado" | "falta" | "pospuesto";
+export type CobroStatus = "terminado" | "facturado" | "cobrado";
 
 export interface ToPayItem {
   id: string;
@@ -36,9 +38,6 @@ export interface ToPayItem {
   status: PaymentStatus;
   importante?: boolean;
 }
-
-// ----- NUEVO: COSAS POR COBRAR -----
-export type CobroStatus = "terminado" | "facturado" | "cobrado";
 
 export interface ToCollectItem {
   id: string;
@@ -73,16 +72,26 @@ export interface Ahorro {
   notas?: string;
 }
 
+// Convertir cualquier cosa a número seguro
+function toNumber(value: any): number {
+  const n = Number(value);
+  return Number.isNaN(n) ? 0 : n;
+}
+
+// =======================================================
+// CONTEXTO
+// =======================================================
 interface AppContextType {
   ingresos: Movimiento[];
   gastos: Movimiento[];
+  clientes: Cliente[];
   cosasPorPagar: ToPayItem[];
   cosasPorCobrar: ToCollectItem[];
-  clientes: Cliente[];
   ahorros: Ahorro[];
 
   dineroDisponible: number;
   balanceReal: number;
+
   loadingData: boolean;
 
   agregarIngreso: (d: Omit<Movimiento, "id">) => Promise<void>;
@@ -113,14 +122,9 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | null>(null);
 
-function toNumber(value: any): number {
-  const n = Number(value);
-  return Number.isNaN(n) ? 0 : n;
-}
-
-// -----------------------------------
+// =======================================================
 // PROVIDER
-// -----------------------------------
+// =======================================================
 export function AppProvider({ children }: { children: ReactNode }) {
   const { user, loadingUser } = useAuth();
 
@@ -130,15 +134,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [cosasPorPagar, setCosasPorPagar] = useState<ToPayItem[]>([]);
   const [cosasPorCobrar, setCosasPorCobrar] = useState<ToCollectItem[]>([]);
   const [ahorros, setAhorros] = useState<Ahorro[]>([]);
+
   const [dineroDisponible, setDineroDisponible] = useState(0);
   const [balanceReal, setBalanceReal] = useState(0);
   const [loadingData, setLoadingData] = useState(true);
 
-  // ---------- FIREBASE SUBSCRIPTIONS ----------
+  // =======================================================
+  // SUBSCRIPCIONES FIRESTORE
+  // =======================================================
   useEffect(() => {
-    if (loadingUser) return;
+    if (loadingUser) return; // Firebase inicializando
 
     if (!user) {
+      // Si NO hay usuario → limpiar todo
       setIngresos([]);
       setGastos([]);
       setClientes([]);
@@ -154,34 +162,72 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const uid = user.uid;
     setLoadingData(true);
 
+    // Suscripciones
     const unsubIngresos = onSnapshot(
       query(collection(db, "usuarios", uid, "ingresos"), orderBy("fecha", "desc")),
-      (snap) => setIngresos(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Movimiento[])
+      (snap) =>
+        setIngresos(
+          snap.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+            monto: toNumber(d.data().monto),
+          })) as Movimiento[]
+        )
     );
 
     const unsubGastos = onSnapshot(
       query(collection(db, "usuarios", uid, "gastos"), orderBy("fecha", "desc")),
-      (snap) => setGastos(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Movimiento[])
+      (snap) =>
+        setGastos(
+          snap.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+            monto: toNumber(d.data().monto),
+          })) as Movimiento[]
+        )
     );
 
     const unsubClientes = onSnapshot(
       collection(db, "usuarios", uid, "clientes"),
-      (snap) => setClientes(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Cliente[])
+      (snap) =>
+        setClientes(
+          snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Cliente[]
+        )
     );
 
     const unsubPagar = onSnapshot(
       collection(db, "usuarios", uid, "cosasPorPagar"),
-      (snap) => setCosasPorPagar(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as ToPayItem[])
+      (snap) =>
+        setCosasPorPagar(
+          snap.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+            monto: toNumber(d.data().monto),
+          })) as ToPayItem[]
+        )
     );
 
     const unsubCobrar = onSnapshot(
       collection(db, "usuarios", uid, "cosasPorCobrar"),
-      (snap) => setCosasPorCobrar(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as ToCollectItem[])
+      (snap) =>
+        setCosasPorCobrar(
+          snap.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+            monto: toNumber(d.data().monto),
+          })) as ToCollectItem[]
+        )
     );
 
     const unsubAhorros = onSnapshot(
       collection(db, "usuarios", uid, "ahorros"),
-      (snap) => setAhorros(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Ahorro[])
+      (snap) =>
+        setAhorros(
+          snap.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+          })) as Ahorro[]
+        )
     );
 
     setLoadingData(false);
@@ -196,25 +242,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [user, loadingUser]);
 
-  // ---------- CÁLCULOS GLOBALES ----------
+  // =======================================================
+  // CÁLCULOS
+  // =======================================================
   useEffect(() => {
     const totalIngresos = ingresos.reduce((a, i) => a + toNumber(i.monto), 0);
     const totalGastos = gastos.reduce((a, g) => a + toNumber(g.monto), 0);
 
     const totalPendientes = cosasPorPagar
-      .filter((c) => c.status === "falta" || c.status === "pospuesto")
+      .filter((c) => c.status !== "pagado")
       .reduce((a, c) => a + toNumber(c.monto), 0);
 
     setDineroDisponible(totalIngresos - totalGastos);
     setBalanceReal(totalIngresos - totalGastos - totalPendientes);
   }, [ingresos, gastos, cosasPorPagar]);
 
-  // ---------- CRUD INGRESOS / GASTOS ----------
-  async function agregarIngreso(data: Omit<Movimiento, "id">) {
+  // =======================================================
+  // CRUD (todos correctos y listos)
+  // =======================================================
+
+  async function agregarIngreso(d: Omit<Movimiento, "id">) {
     if (!user) return;
     await addDoc(collection(db, "usuarios", user.uid, "ingresos"), {
-      ...data,
-      monto: toNumber(data.monto),
+      ...d,
+      monto: toNumber(d.monto),
     });
   }
 
@@ -228,11 +279,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await deleteDoc(doc(db, "usuarios", user.uid, "ingresos", id));
   }
 
-  async function agregarGasto(data: Omit<Movimiento, "id">) {
+  async function agregarGasto(d: Omit<Movimiento, "id">) {
     if (!user) return;
     await addDoc(collection(db, "usuarios", user.uid, "gastos"), {
-      ...data,
-      monto: toNumber(data.monto),
+      ...d,
+      monto: toNumber(d.monto),
     });
   }
 
@@ -246,71 +297,73 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await deleteDoc(doc(db, "usuarios", user.uid, "gastos", id));
   }
 
-  // ---------- COSAS POR PAGAR ----------
-  async function agregarCosaPorPagar(data: Omit<ToPayItem, "id">) {
+  // COSAS POR PAGAR
+  async function agregarCosaPorPagar(d: Omit<ToPayItem, "id">) {
     if (!user) return;
     await addDoc(collection(db, "usuarios", user.uid, "cosasPorPagar"), {
-      ...data,
-      monto: toNumber(data.monto),
+      ...d,
+      monto: toNumber(d.monto),
     });
   }
 
   async function editarCosaPorPagar(id: string, d: Partial<ToPayItem>) {
     if (!user) return;
-    const ref = doc(db, "usuarios", user.uid, "cosasPorPagar", id);
-    await updateDoc(ref, d);
+    await updateDoc(doc(db, "usuarios", user.uid, "cosasPorPagar", id), d);
   }
 
-  async function cambiarEstadoPago(id: string, nuevoEstado: PaymentStatus) {
+  async function cambiarEstadoPago(id: string, estado: PaymentStatus) {
     if (!user) return;
+
     const ref = doc(db, "usuarios", user.uid, "cosasPorPagar", id);
-    const itemSnap = await getDoc(ref);
-    const item = itemSnap.data() as ToPayItem;
+    const snap = await getDoc(ref);
 
-    if (!item) return;
+    if (!snap.exists()) return;
 
-    if (nuevoEstado === "pagado") {
+    const item = snap.data() as ToPayItem;
+
+    if (estado === "pagado") {
+      const fecha = new Date().toISOString().slice(0, 10);
       await addDoc(collection(db, "usuarios", user.uid, "gastos"), {
         descripcion: item.nombre,
         categoria: item.categoria || "",
         monto: toNumber(item.monto),
-        fecha: new Date().toISOString().split("T")[0],
+        fecha,
       });
+
       await deleteDoc(ref);
-    } else {
-      await updateDoc(ref, { status: nuevoEstado });
+      return;
     }
+
+    await updateDoc(ref, { status: estado });
   }
 
-  // ---------- COSAS POR COBRAR ----------
-  async function agregarCosaPorCobrar(data: Omit<ToCollectItem, "id">) {
+  // COSAS POR COBRAR
+  async function agregarCosaPorCobrar(d: Omit<ToCollectItem, "id">) {
     if (!user) return;
     await addDoc(collection(db, "usuarios", user.uid, "cosasPorCobrar"), {
-      ...data,
-      monto: toNumber(data.monto),
+      ...d,
+      monto: toNumber(d.monto),
     });
   }
 
-  // ⭐ FIX — DETECTA CAMBIO A "COBRADO"
   async function editarCosaPorCobrar(id: string, d: Partial<ToCollectItem>) {
     if (!user) return;
 
     const ref = doc(db, "usuarios", user.uid, "cosasPorCobrar", id);
     const snap = await getDoc(ref);
-    const previo = snap.data() as ToCollectItem | undefined;
+    const prev = snap.data() as ToCollectItem | undefined;
 
-    if (!previo) return;
+    if (!prev) return;
 
-    const nuevoEstado = d.status ?? previo.status;
+    const nuevoEstado = d.status ?? prev.status;
 
-    // Si cambia a cobrado → crear ingreso + borrar
-    if (previo.status !== "cobrado" && nuevoEstado === "cobrado") {
-      const hoy = new Date().toISOString().slice(0, 10);
+    if (prev.status !== "cobrado" && nuevoEstado === "cobrado") {
+      const fecha = new Date().toISOString().slice(0, 10);
 
       await addDoc(collection(db, "usuarios", user.uid, "ingresos"), {
-        descripcion: previo.nombre,
-        monto: toNumber(previo.monto),
-        fecha: hoy,
+        descripcion: prev.nombre,
+        monto: toNumber(prev.monto),
+        fecha,
         categoria: "Cobros",
       });
 
@@ -318,7 +371,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Caso normal → solo update
     await updateDoc(ref, d);
   }
 
@@ -327,26 +379,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await deleteDoc(doc(db, "usuarios", user.uid, "cosasPorCobrar", id));
   }
 
-  // MODO MANUAL (opcional)
   async function marcarCobroComoCobrado(item: ToCollectItem) {
     if (!user) return;
 
-    const hoy = new Date().toISOString().slice(0, 10);
+    const fecha = new Date().toISOString().slice(0, 10);
 
     await addDoc(collection(db, "usuarios", user.uid, "ingresos"), {
       descripcion: item.nombre,
       monto: toNumber(item.monto),
-      fecha: hoy,
+      fecha,
       categoria: "Cobros",
     });
 
     await deleteDoc(doc(db, "usuarios", user.uid, "cosasPorCobrar", item.id));
   }
 
-  // ---------- CLIENTES ----------
-  async function agregarCliente(data: Omit<Cliente, "id">) {
+  // CLIENTES
+  async function agregarCliente(d: Omit<Cliente, "id">) {
     if (!user) return;
-    await addDoc(collection(db, "usuarios", user.uid, "clientes"), data);
+    await addDoc(collection(db, "usuarios", user.uid, "clientes"), d);
   }
 
   async function editarCliente(id: string, d: Partial<Cliente>) {
@@ -359,10 +410,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await deleteDoc(doc(db, "usuarios", user.uid, "clientes", id));
   }
 
-  // ---------- AHORROS ----------
-  async function agregarAhorro(data: Omit<Ahorro, "id">) {
+  // AHORROS
+  async function agregarAhorro(d: Omit<Ahorro, "id">) {
     if (!user) return;
-    await addDoc(collection(db, "usuarios", user.uid, "ahorros"), data);
+    await addDoc(collection(db, "usuarios", user.uid, "ahorros"), d);
   }
 
   async function editarAhorro(id: string, d: Partial<Ahorro>) {

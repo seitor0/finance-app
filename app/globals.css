@@ -1,1 +1,23 @@
 @import "tailwindcss";
+
+/* Suaviza todas las animaciones por defecto */
+* {
+  transition: all 0.22s ease-out;
+}
+
+/* Reforzar glass estilo macOS */
+.glass-dark {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+/* Glow suave Apple */
+.apple-glow {
+  box-shadow: 0 0 20px rgba(255,255,255,0.08);
+}
+
+/* Hover “magnético” */
+.magnetic:hover {
+  transform: translateX(4px);
+}
