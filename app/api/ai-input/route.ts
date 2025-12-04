@@ -11,8 +11,8 @@ export async function POST(req: Request) {
   try {
     const { texto } = await req.json();
 
-    const prompt = `
-Interpretá el mensaje y devolvé SOLO este JSON válido:
+   const prompt = `
+Interpretá el mensaje del usuario y devolvé **SOLO** este JSON válido, sin texto adicional:
 
 {
   "tipo": "gasto" | "ingreso",
@@ -22,39 +22,42 @@ Interpretá el mensaje y devolvé SOLO este JSON válido:
   "fecha": "YYYY-MM-DD"
 }
 
-### CATEGORÍAS DISPONIBLES
+## CATEGORÍAS DISPONIBLES
 Kiosco, Supermercado, Salidas, Impuestos, Servicios, Mascota, Farmacia,
 Alquiler, Librería, Suscripciones, Tarjetas, Compras, Otros
 
-### REGLAS IMPORTANTES SOBRE FECHAS
+## FECHA ACTUAL
+La fecha actual es: {{HOY}}
+(La aplicación reemplazará {{HOY}} antes de enviar la solicitud.)
+
+## REGLAS ESTRICTAS SOBRE FECHAS
 - La fecha SIEMPRE debe estar en formato "YYYY-MM-DD".
-- Si el usuario no menciona fecha → usar la fecha de HOY.
-- Si dice "hoy" → usar la fecha de hoy.
-- Si dice "ayer" → usar la fecha de ayer.
-- Si dice “el lunes / martes / miércoles / etc.” → devolver la fecha del día de la semana anterior más reciente.
-- Si el usuario menciona día y mes pero NO año → usar el año actual.
-- Si menciona fecha completa → respetarla.
-- NO inventar años fuera de rango (solo usar el año actual salvo que el usuario especifique un año distinto).
+- Si el usuario no menciona ninguna fecha → usar {{HOY}}.
+- Si dice "hoy" → {{HOY}}.
+- Si dice "ayer" → {{HOY menos 1 día}}.
+- Si dice “el lunes / martes / miércoles / jueves / viernes / sábado / domingo”:
+  • Interpretar SIEMPRE hacia atrás.  
+  • Devolver el día de la semana anterior más cercano a {{HOY}}.  
+  (Nunca elegir una fecha futura.)
+- Si menciona día y mes pero NO año → usar el año de {{HOY}}.
+- Si menciona fecha completa (incluye año) → respetarla.
+- Nunca inventar años fuera del año actual, salvo que el usuario indique explícitamente un año distinto.
 
-### REGLAS GENERALES
-- La descripción NO debe incluir palabras como “hoy”, “ayer”, “el lunes”, “pagué”, “gasté”.
-- El monto debe ser un número entero (sin puntos ni comas como separadores).
-- La categoría debe ser EXACTAMENTE una del listado.
-- Si no encaja en ninguna categoría claramente, usar "Otros".
+## REGLAS GENERALES
+- La descripción NO debe incluir palabras como: “hoy”, “ayer”, “el lunes”, “compré”, “pagué”, “gasté”.
+- La descripción debe ser limpia, corta y sin verbos temporales. Ej: “Compra de pescado”.
+- El monto debe ser un número entero (sin puntos ni comas).
+- La categoría debe ser EXACTAMENTE una del listado.  
+  Si no encaja claramente → usar "Otros".
+- Si no hay monto → usar 0.
+- Si no se entiende si es ingreso o gasto → asumir “gasto”.
 
-### EJEMPLOS
-"Hoy pagué gas 89000"
-→ {"tipo":"gasto","categoria":"Servicios","descripcion":"Pago de gas","monto":89000,"fecha":"2025-02-14"}
+## FORMATO DE RESPUESTA
+- Devolver únicamente el JSON, sin texto antes o después.
+- No agregar explicaciones, comentarios ni ejemplos.
 
-"Compré juguetes"
-→ {"tipo":"gasto","categoria":"Compras","descripcion":"Compra de juguetes","monto":0,"fecha":"2025-02-14"}
-
-"Ayer gasté 10200 en el kiosco comprando alfajores"
-→ {"tipo":"gasto","categoria":"Kiosco","descripcion":"Compra de alfajores","monto":10200,"fecha":"2025-02-13"}
-
-"El lunes pagué 50000 al contador por honorarios"
-→ {"tipo":"gasto","categoria":"Servicios","descripcion":"Pago honorarios contador","monto":50000,"fecha":"2025-02-10"}
 `;
+
 
     const chat = await groq.chat.completions.create({
       model: "llama-3.1-8b-instant",
