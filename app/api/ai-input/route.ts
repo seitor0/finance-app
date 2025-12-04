@@ -26,21 +26,69 @@ Interpretá el mensaje y devolvé SOLO este JSON válido:
 Kiosco, Supermercado, Salidas, Impuestos, Servicios, Mascota, Farmacia,
 Alquiler, Librería, Suscripciones, Tarjetas, Compras, Otros
 
-### REGLAS
-- La descripción NO debe incluir palabras como “hoy”, “ayer”, “pagué”, “gasté”, etc.
-- Detectar fecha automáticamente:
-    • "hoy" → fecha actual
-    • "ayer" → fecha del día anterior
-    • "el sábado/el domingo/el lunes..." → calcular fecha más reciente hacia atrás
-    • fechas textuales se interpretan usando el año actual salvo que diga otro.
-- El monto debe quedar como número limpio (sin puntos ni comas).
-- La categoría debe ser EXACTAMENTE una del listado.
-- Si no puede determinar categoría, usar "Otros".
+---
 
-### EJEMPLOS
-"Hoy pagué gas 89000" → gasto, Servicios, Pago de gas, 89000, fecha de hoy
-"Ayer compré alfajores en el kiosco, gasté 10200" → gasto, Kiosco, Compra de alfajores, 10200, fecha de ayer
-"Me pagaron 150000 del trabajo" → ingreso, Otros, Pago trabajo
+# 🚨 MANEJO DE FECHAS (MUY IMPORTANTE)
+
+Debés convertir **siempre** cualquier referencia temporal a una fecha real:
+
+### REFERENCIAS RELATIVAS
+- "hoy" → fecha de hoy
+- "ayer" → fecha de ayer
+- "anteayer" → dos días atrás
+
+### DÍAS DE LA SEMANA  
+"el lunes", "el martes", "el miércoles", "el jueves",  
+"el viernes", "el sábado", "el domingo"  
+→ SIEMPRE significa **el último día que ya pasó**, nunca uno futuro.
+
+Ejemplo: si hoy es jueves 20, "el lunes" = lunes 17.
+
+### SIN REFERENCIA EXPLÍCITA
+Si el mensaje NO menciona ninguna fecha → usar fecha de HOY.
+
+### PROHIBIDO
+🚫 NO podés devolver "YYYY-MM-DD" literal  
+🚫 NO podés devolver una fecha inválida  
+🚫 Siempre debe ser una fecha real del año actual
+
+---
+
+# REGLAS PARA EL RESTO
+- La descripción NO debe incluir palabras como “hoy”, “ayer”, “el lunes”, “pagué”, “gasté”.
+- El monto debe ser un número entero sin puntos ni comas.
+- La categoría debe ser EXACTA del listado (si no encaja → "Otros").
+
+---
+
+# EJEMPLOS
+
+"ayer compré alfajores en el kiosco gasté 10200" →
+{
+  "tipo": "gasto",
+  "categoria": "Kiosco",
+  "descripcion": "Compra de alfajores",
+  "monto": 10200,
+  "fecha": "<fecha de ayer>"
+}
+
+"el domingo pagué 50000 al contador" →
+{
+  "tipo": "gasto",
+  "categoria": "Servicios",
+  "descripcion": "Pago contador",
+  "monto": 50000,
+  "fecha": "<último domingo>"
+}
+
+"compré un libro 12000" →
+{
+  "tipo": "gasto",
+  "categoria": "Librería",
+  "descripcion": "Compra de libro",
+  "monto": 12000,
+  "fecha": "<hoy>"
+}
 `;
 
     const chat = await groq.chat.completions.create({
