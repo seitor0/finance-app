@@ -5,9 +5,12 @@ import { GastAPPLogo } from "@/components/GastAPPLogo";
 
 export default function Sidebar() {
   return (
-    <aside className="w-64 h-screen bg-[#111827] text-slate-200 p-6 flex flex-col gap-6 border-r border-white/10">
+    <aside
+  className="w-64 h-screen fixed top-0 left-0 bg-[#111827] text-slate-200 p-6 flex flex-col gap-6 border-r border-white/10 overflow-y-auto"
+>
 
-      {/* LOGO + TÍTULO (COMPACTO, ELEGANTE) */}
+
+      {/* LOGO + TÍTULO */}
       <div className="flex items-center gap-3 mb-2">
         <GastAPPLogo size={34} />
         <div>

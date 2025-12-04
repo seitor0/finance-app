@@ -28,10 +28,13 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex">
-      <Sidebar />
+   <div className="flex">
+  <Sidebar />
 
-      <main className="flex-1 p-8 bg-slate-50 min-h-screen">{children}</main>
-    </div>
+  <main className="flex-1 p-8 bg-slate-50 min-h-screen ml-64">
+    {children}
+  </main>
+</div>
+
   );
 }
