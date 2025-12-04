@@ -26,69 +26,34 @@ Interpretá el mensaje y devolvé SOLO este JSON válido:
 Kiosco, Supermercado, Salidas, Impuestos, Servicios, Mascota, Farmacia,
 Alquiler, Librería, Suscripciones, Tarjetas, Compras, Otros
 
----
+### REGLAS IMPORTANTES SOBRE FECHAS
+- La fecha SIEMPRE debe estar en formato "YYYY-MM-DD".
+- Si el usuario no menciona fecha → usar la fecha de HOY.
+- Si dice "hoy" → usar la fecha de hoy.
+- Si dice "ayer" → usar la fecha de ayer.
+- Si dice “el lunes / martes / miércoles / etc.” → devolver la fecha del día de la semana anterior más reciente.
+- Si el usuario menciona día y mes pero NO año → usar el año actual.
+- Si menciona fecha completa → respetarla.
+- NO inventar años fuera de rango (solo usar el año actual salvo que el usuario especifique un año distinto).
 
-# 🚨 MANEJO DE FECHAS (MUY IMPORTANTE)
-
-Debés convertir **siempre** cualquier referencia temporal a una fecha real:
-
-### REFERENCIAS RELATIVAS
-- "hoy" → fecha de hoy
-- "ayer" → fecha de ayer
-- "anteayer" → dos días atrás
-
-### DÍAS DE LA SEMANA  
-"el lunes", "el martes", "el miércoles", "el jueves",  
-"el viernes", "el sábado", "el domingo"  
-→ SIEMPRE significa **el último día que ya pasó**, nunca uno futuro.
-
-Ejemplo: si hoy es jueves 20, "el lunes" = lunes 17.
-
-### SIN REFERENCIA EXPLÍCITA
-Si el mensaje NO menciona ninguna fecha → usar fecha de HOY.
-
-### PROHIBIDO
-🚫 NO podés devolver "YYYY-MM-DD" literal  
-🚫 NO podés devolver una fecha inválida  
-🚫 Siempre debe ser una fecha real del año actual
-
----
-
-# REGLAS PARA EL RESTO
+### REGLAS GENERALES
 - La descripción NO debe incluir palabras como “hoy”, “ayer”, “el lunes”, “pagué”, “gasté”.
-- El monto debe ser un número entero sin puntos ni comas.
-- La categoría debe ser EXACTA del listado (si no encaja → "Otros").
+- El monto debe ser un número entero (sin puntos ni comas como separadores).
+- La categoría debe ser EXACTAMENTE una del listado.
+- Si no encaja en ninguna categoría claramente, usar "Otros".
 
----
+### EJEMPLOS
+"Hoy pagué gas 89000"
+→ {"tipo":"gasto","categoria":"Servicios","descripcion":"Pago de gas","monto":89000,"fecha":"2025-02-14"}
 
-# EJEMPLOS
+"Compré juguetes"
+→ {"tipo":"gasto","categoria":"Compras","descripcion":"Compra de juguetes","monto":0,"fecha":"2025-02-14"}
 
-"ayer compré alfajores en el kiosco gasté 10200" →
-{
-  "tipo": "gasto",
-  "categoria": "Kiosco",
-  "descripcion": "Compra de alfajores",
-  "monto": 10200,
-  "fecha": "<fecha de ayer>"
-}
+"Ayer gasté 10200 en el kiosco comprando alfajores"
+→ {"tipo":"gasto","categoria":"Kiosco","descripcion":"Compra de alfajores","monto":10200,"fecha":"2025-02-13"}
 
-"el domingo pagué 50000 al contador" →
-{
-  "tipo": "gasto",
-  "categoria": "Servicios",
-  "descripcion": "Pago contador",
-  "monto": 50000,
-  "fecha": "<último domingo>"
-}
-
-"compré un libro 12000" →
-{
-  "tipo": "gasto",
-  "categoria": "Librería",
-  "descripcion": "Compra de libro",
-  "monto": 12000,
-  "fecha": "<hoy>"
-}
+"El lunes pagué 50000 al contador por honorarios"
+→ {"tipo":"gasto","categoria":"Servicios","descripcion":"Pago honorarios contador","monto":50000,"fecha":"2025-02-10"}
 `;
 
     const chat = await groq.chat.completions.create({
