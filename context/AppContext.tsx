@@ -57,6 +57,7 @@ export interface Movimiento {
   categoria?: string;
   tipo: "Ingreso" | "Gasto" | "Tarjeta";
   tarjeta?: string;
+  tarjeta_id?: string;
   fecha_pago?: string;
   liquidado?: boolean;
 }

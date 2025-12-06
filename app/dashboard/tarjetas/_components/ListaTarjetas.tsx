@@ -27,6 +27,7 @@ export default function ListaTarjetas() {
   const [movimientos, setMovimientos] = useState<TarjetaMovimiento[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -36,6 +37,7 @@ export default function ListaTarjetas() {
     }
 
     setLoading(true);
+    setError(null);
     const ref = collection(db, "usuarios", user.uid, "movimientos");
     const q = query(
       ref,
@@ -44,15 +46,22 @@ export default function ListaTarjetas() {
       orderBy("fecha_pago", "asc")
     );
 
-    const unsub = onSnapshot(q, (snap) => {
-      setMovimientos(
-        snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as TarjetaMovimiento[]
-      );
-      setLoading(false);
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setMovimientos(
+          snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as TarjetaMovimiento[]
+        );
+        setLoading(false);
+      },
+      () => {
+        setError("No se pudo cargar la información, intentá nuevamente.");
+        setLoading(false);
+      }
+    );
 
     return () => unsub();
-  }, [user]);
+  }, [user?.uid]);
 
   const marcarComoPagado = async (mov: TarjetaMovimiento) => {
     if (!user) return;
@@ -87,13 +96,19 @@ export default function ListaTarjetas() {
         </span>
       </div>
 
+      {error && (
+        <p className="mb-3 rounded-2xl bg-rose-50 px-3 py-2 text-sm text-rose-600">
+          {error}
+        </p>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-10 text-slate-500">
           <Loader2 className="h-5 w-5 animate-spin mr-2" /> Cargando movimientos...
         </div>
       ) : movimientos.length === 0 ? (
         <p className="text-sm text-slate-500">
-          No tenés gastos con tarjeta pendientes de pago.
+          No hay gastos con tarjeta todavía.
         </p>
       ) : (
         <ul className="space-y-4">

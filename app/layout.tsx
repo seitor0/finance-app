@@ -3,6 +3,12 @@
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { AppProvider } from "@/context/AppContext";
+import { Inter } from "next/font/google";
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export const metadata = {
   title: "GastAPP",
@@ -21,7 +27,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body>
+      <body className={inter.className}>
         {/* Providers deben ir dentro del <body>, nunca fuera */}
         <AuthProvider>
           <AppProvider>{children}</AppProvider>

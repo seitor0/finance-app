@@ -1,10 +1,16 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import clsx from "clsx";
 import { useApp } from "@/context/AppContext";
+import type {
+  PaymentStatus,
+  ToPayItem,
+  ToCollectItem,
+  CobroStatus,
+} from "@/context/AppContext";
 import AppleRings from "./_components/AppleRings";
 import FinanzasDelMes from "./_components/FinanzasDelMes";
-import WidgetCosasPorPagar from "./_components/WidgetCosasPorPagar";
 import WidgetDisponible from "./_components/WidgetDisponible";
 
 type MovimientoUI = {
@@ -21,10 +27,12 @@ export default function DashboardPage() {
     gastos,
     ahorros,
     cosasPorPagar,
-    cosasPorCobrar,          // 👈 agregado
+    cosasPorCobrar,
     agregarIngreso,
     agregarGasto,
     agregarAhorro,
+    cambiarEstadoPago,
+    editarCosaPorCobrar,
   } = useApp();
 
   // ============================
@@ -121,6 +129,230 @@ const totalUSD = useMemo(
   () => (ahorros ?? []).reduce((acc: number, a: any) => acc + (a.usd ?? 0), 0),
   [ahorros]
 );
+
+  type MovimientoDetalle = {
+    id: string;
+    tipo: "Ingreso" | "Gasto" | "Deuda" | "Tarjeta";
+    descripcion: string;
+    monto: number;
+    fecha: string;
+  };
+
+  const ultimosMovimientos = useMemo<MovimientoDetalle[]>(() => {
+    const ingresoMovs = ingresos.map(
+      (i: any): MovimientoDetalle => ({
+        id: `ing-${i.id}`,
+        tipo: "Ingreso",
+        descripcion: i.descripcion || "Ingreso",
+        monto: Number(i.monto ?? 0),
+        fecha: i.fecha ?? "",
+      })
+    );
+
+    const gastoMovs = gastos.map(
+      (g: any): MovimientoDetalle => ({
+        id: `gas-${g.id}`,
+        tipo: "Gasto",
+        descripcion: g.descripcion || "Gasto",
+        monto: Number(g.monto ?? 0),
+        fecha: g.fecha ?? "",
+      })
+    );
+
+    const deudasPagadas = cosasPorPagar
+      .filter((c: any) => c.status === "pagado")
+      .map(
+        (c: any): MovimientoDetalle => ({
+          id: `deu-${c.id}`,
+          tipo: "Deuda",
+          descripcion: c.nombre || "Pago de deuda",
+          monto: Number(c.monto ?? 0),
+          fecha: c.vencimiento || new Date().toISOString().slice(0, 10),
+        })
+      );
+
+    return [...ingresoMovs, ...gastoMovs, ...deudasPagadas]
+      .filter((m) => m.fecha)
+      .sort(
+        (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+      )
+      .slice(0, 5);
+  }, [ingresos, gastos, cosasPorPagar]);
+
+  const proximosVencimientos = useMemo(() => {
+    const hoy = new Date();
+    return cosasPorPagar
+      .filter((c: any) => c.status !== "pagado" && c.vencimiento)
+      .map((c: any) => {
+        const fecha = new Date(c.vencimiento as string);
+        const diffDias = Math.ceil(
+          (fecha.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        return { ...c, diffDias, fecha };
+      })
+      .filter((c) => c.diffDias <= 7)
+      .sort((a, b) => a.fecha.getTime() - b.fecha.getTime())
+      .slice(0, 5);
+  }, [cosasPorPagar]);
+
+  const flujoMensual = useMemo(() => {
+    const diasEnMes = new Date(añoActual, mesActualNumero, 0).getDate();
+    const ingresoMapa: Record<number, number> = {};
+    const gastoMapa: Record<number, number> = {};
+
+    ingresos.forEach((i: any) => {
+      if ((i.fecha ?? "").startsWith(mesActualKey)) {
+        const dia = Number(i.fecha?.slice(8, 10)) || 1;
+        ingresoMapa[dia] = (ingresoMapa[dia] || 0) + Number(i.monto ?? 0);
+      }
+    });
+
+    gastos.forEach((g: any) => {
+      if ((g.fecha ?? "").startsWith(mesActualKey)) {
+        const dia = Number(g.fecha?.slice(8, 10)) || 1;
+        gastoMapa[dia] = (gastoMapa[dia] || 0) + Number(g.monto ?? 0);
+      }
+    });
+
+    const data = [];
+    let acumIngreso = 0;
+    let acumGasto = 0;
+    for (let dia = 1; dia <= diasEnMes; dia++) {
+      acumIngreso += ingresoMapa[dia] || 0;
+      acumGasto += gastoMapa[dia] || 0;
+      data.push({ dia, ingreso: acumIngreso, gasto: acumGasto });
+    }
+
+    const maxValor = Math.max(
+      ...data.map((d) => Math.max(d.ingreso, d.gasto)),
+      1
+    );
+
+    return { data, maxValor };
+  }, [ingresos, gastos, mesActualKey, añoActual, mesActualNumero]);
+
+  const sugerenciasAI = [
+    "Gastaste más en supermercado que el mes pasado.",
+    "Podrías transferir $50.000 a ahorros para mantener el ritmo.",
+    "Te quedan 5 días para pagar la tarjeta.",
+  ];
+
+  const iconoMovimiento: Record<MovimientoDetalle["tipo"], string> = {
+    Ingreso: "💰",
+    Gasto: "💳",
+    Deuda: "🧾",
+    Tarjeta: "⚙️",
+  };
+
+  type HighlightTone = "success" | "warning" | "danger";
+
+  const [deudaHighlights, setDeudaHighlights] = useState<Record<string, HighlightTone>>({});
+  const [cobroHighlights, setCobroHighlights] = useState<Record<string, HighlightTone>>({});
+  const [updatingDeuda, setUpdatingDeuda] = useState<string | null>(null);
+  const [updatingCobro, setUpdatingCobro] = useState<string | null>(null);
+
+  const highlightClasses: Record<HighlightTone, string> = {
+    success: "bg-emerald-50",
+    warning: "bg-amber-50",
+    danger: "bg-rose-50",
+  };
+
+  const getVencimientoClasses = (diffDias: number) => {
+    if (diffDias < 0) {
+      return {
+        wrapper: "border border-rose-100 bg-rose-50",
+        badge: "text-rose-600",
+      };
+    }
+    if (diffDias === 0) {
+      return {
+        wrapper: "border border-amber-100 bg-amber-50",
+        badge: "text-amber-600",
+      };
+    }
+    return {
+      wrapper: "border border-slate-200 bg-white",
+      badge: "text-slate-500",
+    };
+  };
+
+  const paymentTone = (status: PaymentStatus): HighlightTone => {
+    if (status === "pagado") return "success";
+    if (status === "pospuesto") return "warning";
+    return "danger";
+  };
+
+  const cobroTone = (status: CobroStatus): HighlightTone => {
+    if (status === "cobrado") return "success";
+    if (status === "facturado") return "warning";
+    return "danger";
+  };
+
+  const triggerHighlight = (
+    setter: React.Dispatch<React.SetStateAction<Record<string, HighlightTone>>>,
+    id: string,
+    tone: HighlightTone
+  ) => {
+    setter((prev) => ({ ...prev, [id]: tone }));
+    setTimeout(() => {
+      setter((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }, 1000);
+  };
+
+  const pagoOptions: { label: string; value: PaymentStatus }[] = [
+    { label: "Falta", value: "falta" },
+    { label: "Pagado", value: "pagado" },
+    { label: "Pospuesto", value: "pospuesto" },
+  ];
+
+  const cobroOptions: { label: string; value: CobroStatus }[] = [
+    { label: "Pendiente", value: "terminado" },
+    { label: "Facturado", value: "facturado" },
+    { label: "Terminado", value: "cobrado" },
+  ];
+
+  const buildPolylinePoints = (key: "ingreso" | "gasto") => {
+    const dataset = flujoMensual.data;
+    if (dataset.length === 0) return "0,100 100,100";
+    const divisor = dataset.length > 1 ? dataset.length - 1 : 1;
+    return dataset
+      .map((d, idx) => {
+        const x = (idx / divisor) * 100;
+        const rawY = 100 - (d[key] / flujoMensual.maxValor) * 100;
+        const y = Number.isFinite(rawY) ? rawY : 100;
+        return `${x},${y}`;
+      })
+      .join(" ");
+  };
+
+  const ingresoPoints = buildPolylinePoints("ingreso");
+  const gastoPoints = buildPolylinePoints("gasto");
+
+  const handleEstadoDeuda = async (item: ToPayItem, next: PaymentStatus) => {
+    if (next === item.status) return;
+    setUpdatingDeuda(item.id);
+    try {
+      await cambiarEstadoPago(item.id, next);
+      triggerHighlight(setDeudaHighlights, item.id, paymentTone(next));
+    } finally {
+      setUpdatingDeuda(null);
+    }
+  };
+
+  const handleEstadoCobro = async (item: ToCollectItem, next: CobroStatus) => {
+    if (next === item.status) return;
+    setUpdatingCobro(item.id);
+    try {
+      await editarCosaPorCobrar(item.id, { status: next });
+      triggerHighlight(setCobroHighlights, item.id, cobroTone(next));
+    } finally {
+      setUpdatingCobro(null);
+    }
+  };
 
   // ============================
   // IA
@@ -235,27 +467,96 @@ const totalUSD = useMemo(
             cobrosPendientes={totalCobrosPendientes}  // 👈 TE LO AGREGO EN LA PROP
           />
 
+          {proximosVencimientos.length > 0 && (
+            <div className="mt-8">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-slate-700">Próximos vencimientos</h3>
+                <a
+                  href="/dashboard/cosas-por-pagar"
+                  className="text-xs text-blue-600 hover:text-blue-700"
+                >
+                  Ver todo →
+                </a>
+              </div>
+              <div className="space-y-2">
+                {proximosVencimientos.map((item) => {
+                  const { wrapper, badge } = getVencimientoClasses(item.diffDias);
+                  return (
+                    <div
+                      key={item.id}
+                      className={clsx(
+                        "flex items-center justify-between rounded-2xl px-4 py-2 text-sm transition-colors",
+                        wrapper
+                      )}
+                    >
+                      <div>
+                        <p className="font-semibold text-slate-800 flex items-center gap-2">
+                          <span role="img" aria-hidden>
+                            🗓️
+                          </span>
+                          {item.nombre}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Vence {item.vencimiento} · ${Number(item.monto ?? 0).toLocaleString("es-AR")}
+                        </p>
+                      </div>
+                      <span className={clsx("text-xs font-semibold", badge)}>
+                        {item.diffDias < 0
+                          ? `${Math.abs(item.diffDias)}d vencidos`
+                          : item.diffDias === 0
+                          ? "Hoy"
+                          : `En ${item.diffDias}d`}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Lista de deudas */}
           {deudasMes.length > 0 && (
             <div className="mt-8">
               <h3 className="text-sm font-semibold text-slate-700 mb-2">Deudas</h3>
-              <div className="rounded-xl bg-white/70 shadow-inner divide-y divide-slate-200">
-                {deudasMes.map((d) => (
-                  <div
-                    key={d.id}
-                    className="flex items-center justify-between px-4 py-2 text-sm"
-                  >
-                    <span className="font-medium text-slate-700">
-                      {d.nombre}
-                      {d.status === "pospuesto" && (
-                        <span className="text-xs text-amber-600">(pospuesto)</span>
+              <div className="space-y-3">
+                {deudasMes.map((d) => {
+                  const tone = deudaHighlights[d.id];
+                  return (
+                    <div
+                      key={d.id}
+                      className={clsx(
+                        "flex flex-col gap-3 rounded-2xl border border-slate-200/70 px-4 py-3 text-sm transition-colors duration-500 md:flex-row md:items-center md:justify-between",
+                        tone && highlightClasses[tone]
                       )}
-                    </span>
-                    <span className="font-semibold text-slate-800">
-                      ${Number(d.monto ?? 0).toLocaleString("es-AR")}
-                    </span>
-                  </div>
-                ))}
+                    >
+                      <div>
+                        <p className="font-semibold text-slate-800">{d.nombre}</p>
+                        <p className="text-xs text-slate-500">
+                          ${Number(d.monto ?? 0).toLocaleString("es-AR")} · {d.vencimiento || "Sin fecha"}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span role="img" aria-hidden className="text-lg">
+                          🪄
+                        </span>
+                        <select
+                          value={d.status}
+                          onChange={(e) => handleEstadoDeuda(d, e.target.value as PaymentStatus)}
+                          className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none"
+                          disabled={updatingDeuda === d.id}
+                          title="Cambiar estado"
+                        >
+                          {pagoOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -264,20 +565,45 @@ const totalUSD = useMemo(
           {cobrosMes.length > 0 && (
             <div className="mt-8">
               <h3 className="text-sm font-semibold text-emerald-600 mb-2">Cobros pendientes</h3>
-              <div className="rounded-xl bg-white/70 shadow-inner divide-y divide-slate-200">
-                {cobrosMes.map((c) => (
-                  <div
-                    key={c.id}
-                    className="flex items-center justify-between px-4 py-2 text-sm"
-                  >
-                    <span className="font-medium text-slate-700">
-                      {c.nombre}
-                    </span>
-                    <span className="font-semibold text-emerald-600">
-                      ${Number(c.monto ?? 0).toLocaleString("es-AR")}
-                    </span>
-                  </div>
-                ))}
+              <div className="space-y-3">
+                {cobrosMes.map((c) => {
+                  const tone = cobroHighlights[c.id];
+                  return (
+                    <div
+                      key={c.id}
+                      className={clsx(
+                        "flex flex-col gap-3 rounded-2xl border border-emerald-100 px-4 py-3 text-sm transition-colors duration-500 md:flex-row md:items-center md:justify-between",
+                        tone && highlightClasses[tone]
+                      )}
+                    >
+                      <div>
+                        <p className="font-semibold text-slate-800">{c.nombre}</p>
+                        <p className="text-xs text-slate-500">
+                          ${Number(c.monto ?? 0).toLocaleString("es-AR")} · {c.vencimiento || "Sin fecha"}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span role="img" aria-hidden className="text-lg">
+                          🪄
+                        </span>
+                        <select
+                          value={c.status}
+                          onChange={(e) => handleEstadoCobro(c, e.target.value as CobroStatus)}
+                          className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none"
+                          disabled={updatingCobro === c.id}
+                          title="Actualizar estado"
+                        >
+                          {cobroOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -285,11 +611,86 @@ const totalUSD = useMemo(
 
         {/* ====================== DERECHA ====================== */}
         <div className="space-y-4">
-          {/* OBJETIVOS */}
+          <div className="glass-card p-0">
+            <WidgetDisponible variant="hero" className="w-full" />
+          </div>
+
+          <div className="glass-card">
+            <h2 className="text-lg font-semibold mb-3">Cargar con IA</h2>
+            <textarea
+              value={texto}
+              onChange={(e) => setTexto(e.target.value)}
+              placeholder='Ej: "Gaste 20.000 en el super" o "Cobré 700.000"'
+              className="w-full h-28 p-4 rounded-2xl border border-slate-300 bg-white text-slate-800 placeholder-slate-400 text-sm"
+            />
+            <button
+              onClick={enviarAI}
+              className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-2xl font-medium disabled:opacity-50"
+              disabled={loading}
+            >
+              {loading ? "Procesando..." : "Enviar"}
+            </button>
+
+            {respuesta && (
+              <pre className="text-xs mt-4 bg-white p-4 rounded-xl border border-blue-200 shadow">
+                {JSON.stringify(respuesta, null, 2)}
+              </pre>
+            )}
+
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+                <span role="img" aria-hidden>
+                  🤖
+                </span>
+                Sugerencias automáticas
+              </div>
+              <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                {sugerenciasAI.map((tip, idx) => (
+                  <li key={idx} className="flex gap-2">
+                    <span className="text-blue-500">•</span>
+                    <span>{tip}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {ultimosMovimientos.length > 0 && (
+            <div className="glass-card">
+              <h3 className="text-lg font-semibold mb-3">Últimos movimientos</h3>
+              <ul className="space-y-3">
+                {ultimosMovimientos.map((mov) => (
+                  <li
+                    key={mov.id}
+                    className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl" role="img" aria-hidden>
+                        {iconoMovimiento[mov.tipo]}
+                      </span>
+                      <div>
+                        <p className="font-semibold text-slate-800">{mov.descripcion}</p>
+                        <p className="text-xs text-slate-500">{mov.fecha || "—"}</p>
+                      </div>
+                    </div>
+                    <p
+                      className={clsx(
+                        "text-sm font-semibold",
+                        mov.tipo === "Ingreso" ? "text-emerald-600" : "text-rose-600"
+                      )}
+                    >
+                      {mov.tipo === "Ingreso" ? "+" : "-"}$
+                      {Number(mov.monto ?? 0).toLocaleString("es-AR")}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="glass-card">
             <h3 className="text-lg font-semibold mb-4">Objetivos del mes</h3>
 
-            {/* Ahorro deseado */}
             <div className="flex items-center justify-between text-sm">
               <span>Ahorro deseado</span>
               <strong>${Math.round(ahorroDeseado).toLocaleString("es-AR")}</strong>
@@ -306,7 +707,6 @@ const totalUSD = useMemo(
               />
             </div>
 
-            {/* Gasto ideal */}
             <div className="flex items-center justify-between text-sm mt-4">
               <span>Gasto ideal</span>
               <strong>${Math.round(gastoIdeal).toLocaleString("es-AR")}</strong>
@@ -324,7 +724,6 @@ const totalUSD = useMemo(
             </div>
           </div>
 
-          {/* AHORRO USD */}
           <div className="glass-card">
             <h3 className="text-lg font-semibold mb-1">Ahorro en dólares</h3>
             <p className="text-sm text-slate-500 mb-4">Total acumulado.</p>
@@ -332,42 +731,51 @@ const totalUSD = useMemo(
               USD {totalUSD.toLocaleString("es-AR")}
             </p>
           </div>
-
-          {/* COSAS POR PAGAR + DISPONIBLE */}
-          <div className="grid grid-cols-2 gap-6 w-[95%] mx-auto">
-            <WidgetCosasPorPagar />
-            <WidgetDisponible />
-          </div>
         </div>
       </section>
 
-      {/* ============================ FILA 2 — IA + Finanzas ============================ */}
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div className="glass-card">
-          <h2 className="text-lg font-semibold mb-3">Cargar con IA</h2>
-          <textarea
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            placeholder='Ej: "Gaste 20.000 en el super" o "Cobré 700.000"'
-            className="w-full h-28 p-4 rounded-2xl border border-slate-300 bg-white text-slate-800 placeholder-slate-400 text-sm"
-          />
-          <button
-            onClick={enviarAI}
-            className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-2xl font-medium disabled:opacity-50"
-            disabled={loading}
+      {/* ============================ FILA 2 — Finanzas ============================ */}
+      <section className="glass-card">
+        <FinanzasDelMes ingresos={ingresos} gastos={gastos} />
+      </section>
+
+      <section className="glass-card">
+        <h2 className="text-lg font-semibold mb-2">Flujo mensual</h2>
+        <p className="text-sm text-slate-500 mb-4">
+          Evolución acumulada de ingresos vs. gastos durante el mes.
+        </p>
+        <div className="h-56 w-full">
+          <svg
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            className="h-full w-full"
           >
-            {loading ? "Procesando..." : "Enviar"}
-          </button>
-
-          {respuesta && (
-            <pre className="text-xs mt-4 bg-white p-4 rounded-xl border border-blue-200 shadow">
-              {JSON.stringify(respuesta, null, 2)}
-            </pre>
-          )}
+            <polyline
+              points={ingresoPoints}
+              fill="none"
+              stroke="#2563eb"
+              strokeWidth="2"
+              strokeLinecap="round"
+              className="drop-shadow"
+            />
+            <polyline
+              points={gastoPoints}
+              fill="none"
+              stroke="#f43f5e"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
         </div>
-
-        <div className="glass-card">
-          <FinanzasDelMes ingresos={ingresos} gastos={gastos} />
+        <div className="mt-4 flex items-center gap-6 text-sm text-slate-600">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-6 rounded-full bg-blue-600" />
+            Ingresos acumulados
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-6 rounded-full bg-rose-500" />
+            Gastos acumulados
+          </div>
         </div>
       </section>
 

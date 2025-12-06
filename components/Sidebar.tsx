@@ -92,11 +92,11 @@ function Nav({ onClick = () => {} }) {
       <SidebarLink href="/dashboard/cosas-por-cobrar" icon="dollar">
         Cosas por cobrar
       </SidebarLink>
-       <SidebarLink href="/dashboard/configuracion" icon="settings">
-        Configuración
+      <SidebarLink href="/dashboard/tarjetas" icon="credit-card">
+        Gastos con tarjeta
       </SidebarLink>
-      <SidebarLink href="/dashboard/tarjetas" icon="CreditCard">
-        Tarjetas
+      <SidebarLink href="/dashboard/configuracion" icon="settings">
+        Configuración
       </SidebarLink>
     </nav>
   );

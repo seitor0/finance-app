@@ -1,12 +1,17 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { collection, onSnapshot } from "firebase/firestore";
+import Link from "next/link";
+
 import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
+import { db } from "@/lib/firebase";
 
 type FormState = {
   descripcion: string;
   monto: string;
-  tarjeta: string;
+  tarjetaId: string;
   fechaCompra: string;
   fechaPago: string;
 };
@@ -16,7 +21,7 @@ const initialState = (): FormState => {
   return {
     descripcion: "",
     monto: "",
-    tarjeta: "",
+    tarjetaId: "",
     fechaCompra: hoy,
     fechaPago: hoy,
   };
@@ -24,10 +29,14 @@ const initialState = (): FormState => {
 
 export default function FormTarjeta() {
   const { agregarGastoTarjeta } = useApp();
+  const { user } = useAuth();
   const [form, setForm] = useState<FormState>(initialState);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [tarjetas, setTarjetas] = useState<any[]>([]);
+  const [loadingTarjetas, setLoadingTarjetas] = useState(true);
+  const [tarjetasError, setTarjetasError] = useState<string | null>(null);
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -36,19 +45,57 @@ export default function FormTarjeta() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  useEffect(() => {
+    if (!user) {
+      setTarjetas([]);
+      setLoadingTarjetas(false);
+      return;
+    }
+
+    setLoadingTarjetas(true);
+    const ref = collection(db, "usuarios", user.uid, "tarjetas");
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        setTarjetas(
+          snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }))
+        );
+        setLoadingTarjetas(false);
+        setTarjetasError(null);
+      },
+      () => {
+        setTarjetasError("No se pudo cargar tus tarjetas.");
+        setLoadingTarjetas(false);
+      }
+    );
+
+    return () => unsub();
+  }, [user?.uid]);
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
 
-    if (!form.descripcion.trim() || !form.tarjeta.trim()) {
-      setError("Completá la descripción y la tarjeta");
+    if (!form.descripcion.trim()) {
+      setError("Completá la descripción");
       return;
     }
 
     const montoNumber = Number(form.monto);
     if (!Number.isFinite(montoNumber) || montoNumber <= 0) {
       setError("Ingresá un monto válido");
+      return;
+    }
+
+    if (!form.tarjetaId) {
+      setError("Seleccioná una tarjeta antes de guardar.");
+      return;
+    }
+
+    const tarjetaSeleccionada = tarjetas.find((t) => t.id === form.tarjetaId);
+    if (!tarjetaSeleccionada) {
+      setError("La tarjeta seleccionada ya no existe.");
       return;
     }
 
@@ -60,7 +107,8 @@ export default function FormTarjeta() {
         fecha: form.fechaCompra,
         categoria: "Tarjeta",
         tipo: "Tarjeta",
-        tarjeta: form.tarjeta.trim(),
+        tarjeta: tarjetaSeleccionada.nombre,
+        tarjeta_id: tarjetaSeleccionada.id,
         fecha_pago: form.fechaPago,
       });
       setSuccess("Gasto con tarjeta cargado");
@@ -113,14 +161,38 @@ export default function FormTarjeta() {
             <label className="block text-sm font-medium text-slate-600 mb-1">
               Tarjeta
             </label>
-            <input
-              type="text"
-              name="tarjeta"
-              value={form.tarjeta}
+            <select
+              name="tarjetaId"
+              value={form.tarjetaId}
               onChange={handleChange}
               className="w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
-              placeholder="Visa, Amex, etc."
-            />
+              disabled={loadingTarjetas || tarjetas.length === 0}
+            >
+              <option value="">
+                {loadingTarjetas ? "Cargando tarjetas..." : "Seleccioná una tarjeta"}
+              </option>
+              {tarjetas.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nombre}
+                  {t.banco ? ` · ${t.banco}` : ""}
+                </option>
+              ))}
+            </select>
+            {tarjetasError && (
+              <p className="mt-2 text-xs text-rose-600">{tarjetasError}</p>
+            )}
+            {tarjetas.length === 0 && !loadingTarjetas && !tarjetasError && (
+              <p className="mt-2 text-xs text-slate-500">
+                No tenés tarjetas guardadas.
+                <Link
+                  href="/dashboard/configuracion"
+                  className="ml-1 text-blue-600 underline"
+                >
+                  Agregá una tarjeta desde Configuración
+                </Link>
+                .
+              </p>
+            )}
           </div>
         </div>
 
