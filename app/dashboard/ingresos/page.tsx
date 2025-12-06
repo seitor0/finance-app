@@ -1,6 +1,7 @@
 "use client";
 
 import { useApp } from "@/context/AppContext";
+import type { Movimiento } from "@/context/AppContext";
 import { useState } from "react";
 import FormularioIngreso from "./FormularioIngreso";
 
@@ -9,8 +10,8 @@ export default function IngresosPage() {
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
 
-  const handleSave = (data) => {
-    const payload = {
+  const handleSave = (data: any) => {
+    const payload: Omit<Movimiento, "id"> = {
       descripcion: data.descripcion,
       monto: Number(data.monto),
       fecha: data.fecha,
