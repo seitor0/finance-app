@@ -55,6 +55,10 @@ export interface Movimiento {
   monto: number;
   fecha: string;
   categoria?: string;
+  tipo: "Ingreso" | "Gasto" | "Tarjeta";
+  tarjeta?: string;
+  fecha_pago?: string;
+  liquidado?: boolean;
 }
 
 export interface Cliente {
@@ -99,6 +103,7 @@ interface AppContextType {
   borrarIngreso: (id: string) => Promise<void>;
 
   agregarGasto: (d: Omit<Movimiento, "id">) => Promise<void>;
+  agregarGastoTarjeta: (d: Omit<Movimiento, "id">) => Promise<void>;
   editarGasto: (id: string, d: Partial<Movimiento>) => Promise<void>;
   borrarGasto: (id: string) => Promise<void>;
 
@@ -167,11 +172,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       query(collection(db, "usuarios", uid, "ingresos"), orderBy("fecha", "desc")),
       (snap) =>
         setIngresos(
-          snap.docs.map((d) => ({
-            id: d.id,
-            ...d.data(),
-            monto: toNumber(d.data().monto),
-          })) as Movimiento[]
+          snap.docs.map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              ...data,
+              monto: toNumber(data.monto),
+              tipo: (data.tipo as Movimiento["tipo"]) ?? "Ingreso",
+            } as Movimiento;
+          })
         )
     );
 
@@ -179,11 +188,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       query(collection(db, "usuarios", uid, "gastos"), orderBy("fecha", "desc")),
       (snap) =>
         setGastos(
-          snap.docs.map((d) => ({
-            id: d.id,
-            ...d.data(),
-            monto: toNumber(d.data().monto),
-          })) as Movimiento[]
+          snap.docs.map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              ...data,
+              monto: toNumber(data.monto),
+              tipo: (data.tipo as Movimiento["tipo"]) ?? "Gasto",
+            } as Movimiento;
+          })
         )
     );
 
@@ -266,6 +279,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await addDoc(collection(db, "usuarios", user.uid, "ingresos"), {
       ...d,
       monto: toNumber(d.monto),
+      tipo: "Ingreso",
     });
   }
 
@@ -284,6 +298,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await addDoc(collection(db, "usuarios", user.uid, "gastos"), {
       ...d,
       monto: toNumber(d.monto),
+      tipo: "Gasto",
+    });
+  }
+
+  // Tarjetas
+  async function agregarGastoTarjeta(d: Omit<Movimiento, "id">) {
+    if (!user) return;
+    const ref = collection(db, "usuarios", user.uid, "movimientos");
+    await addDoc(ref, {
+      ...d,
+      monto: toNumber(d.monto),
+      tipo: "Tarjeta",
+      liquidado: false,
     });
   }
 
@@ -444,6 +471,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         borrarIngreso,
 
         agregarGasto,
+        agregarGastoTarjeta,
         editarGasto,
         borrarGasto,
 

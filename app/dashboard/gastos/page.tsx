@@ -11,79 +11,77 @@ export default function GastosPage() {
   const [editItem, setEditItem] = useState(null);
 
   return (
-    <div>
-      <h1 className="text-3xl font-semibold mb-6">Gastos</h1>
+    <div className="space-y-6 font-[Inter] text-slate-800">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold">Gastos</h1>
+          <p className="text-sm text-slate-500">Controlá tus egresos y mantené todo al día.</p>
+        </div>
 
-      <button
-        onClick={() => {
-          setEditItem(null);
-          setShowForm(true);
-        }}
-        className="mb-4 bg-blue-600 text-white px-4 py-2 rounded"
-      >
-        + Agregar gasto
-      </button>
+        <button
+          onClick={() => {
+            setEditItem(null);
+            setShowForm(true);
+          }}
+          className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+        >
+          + Agregar gasto
+        </button>
+      </div>
 
-      {/* ======= TABLA ======= */}
-      <table className="min-w-full bg-white shadow rounded">
-        <thead>
-          <tr className="border-b bg-gray-50">
-            <th className="p-3 text-left">Fecha</th>
-            <th className="p-3 text-left">Categoría</th>
-            <th className="p-3 text-left">Descripción</th>
-            <th className="p-3 text-left">Monto</th>
-            <th className="p-3 text-left"></th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {gastos.map((g) => (
-            <tr key={g.id} className="border-b">
-              
-              {/* FECHA */}
-              <td className="p-3">{g.fecha}</td>
-
-              {/* CATEGORÍA */}
-              <td className="p-3 font-medium text-gray-700">
-                {g.categoria || "—"}
-              </td>
-
-              {/* DESCRIPCIÓN */}
-              <td className="p-3">{g.descripcion}</td>
-
-              {/* MONTO */}
-              <td className="p-3">
-                {g.monto
-                  ? `$${Number(g.monto).toLocaleString("es-AR")}`
-                  : "$0"}
-              </td>
-
-              {/* ACCIONES */}
-              <td className="p-3 flex gap-3">
-                <button
-                  className="text-blue-600"
-                  onClick={() => {
-                    setEditItem(g);
-                    setShowForm(true);
-                  }}
-                >
-                  Editar
-                </button>
-
-                <button
-                  className="text-red-600"
-                  onClick={() => borrarGasto(g.id)}
-                >
-                  Borrar
-                </button>
-              </td>
-
+      <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <table className="min-w-full divide-y divide-slate-100 text-sm">
+          <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-4 py-3 text-left">Fecha</th>
+              <th className="px-4 py-3 text-left">Categoría</th>
+              <th className="px-4 py-3 text-left">Descripción</th>
+              <th className="px-4 py-3 text-left">Monto</th>
+              <th className="px-4 py-3 text-left">Acciones</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-100 text-slate-600">
+            {gastos.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
+                  No hay gastos registrados.
+                </td>
+              </tr>
+            )}
 
-      {/* ======= MODAL FORM ======= */}
+            {gastos.map((g) => (
+              <tr key={g.id} className="hover:bg-slate-50/70">
+                <td className="px-4 py-3 font-medium text-slate-700">{g.fecha}</td>
+                <td className="px-4 py-3">{g.categoria || "—"}</td>
+                <td className="px-4 py-3">{g.descripcion}</td>
+                <td className="px-4 py-3 font-semibold text-slate-900">
+                  {g.monto ? `$${Number(g.monto).toLocaleString("es-AR")}` : "$0"}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                      onClick={() => {
+                        setEditItem(g);
+                        setShowForm(true);
+                      }}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      className="rounded-lg bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-100"
+                      onClick={() => borrarGasto(g.id)}
+                    >
+                      Borrar
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       {showForm && (
         <FormularioGasto
           editItem={editItem}
@@ -92,7 +90,7 @@ export default function GastosPage() {
             if (editItem) {
               editarGasto(editItem.id, data);
             } else {
-              agregarGasto(data);
+              agregarGasto({ ...data, tipo: "Gasto" });
             }
             setShowForm(false);
           }}

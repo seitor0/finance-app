@@ -140,9 +140,15 @@ export default function DashboardPage() {
       const json = await resp.json();
 
       if (json.tipo === "gasto") {
-        await agregarGasto(json);
+        await agregarGasto({
+          ...json,
+          tipo: "Gasto",
+        });
       } else if (json.tipo === "ingreso") {
-        await agregarIngreso(json);
+        await agregarIngreso({
+          ...json,
+          tipo: "Ingreso",
+        });
       } else if (json.tipo === "ahorro" || json.tipo === "compra-usd" || json.tipo === "venta-usd") {
         await agregarAhorro({
           usd: json.usd,

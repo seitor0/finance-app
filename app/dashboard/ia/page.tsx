@@ -27,18 +27,20 @@ export default function IAInputPage() {
       setRespuesta(JSON.stringify(data, null, 2));
 
       if (data.tipo === "ingreso") {
-        agregarIngreso({
-        descripcion: data.descripcion,
-  monto: data.monto,
-  categoria: data.categoria,
-  fecha: data.fecha,
-        });
-      } else if (data.tipo === "gasto") {
-        agregarGasto({
+        await agregarIngreso({
           descripcion: data.descripcion,
           monto: data.monto,
           categoria: data.categoria,
           fecha: data.fecha,
+          tipo: "Ingreso",
+        });
+      } else if (data.tipo === "gasto") {
+        await agregarGasto({
+          descripcion: data.descripcion,
+          monto: data.monto,
+          categoria: data.categoria,
+          fecha: data.fecha,
+          tipo: "Gasto",
         });
       }
     } catch (e) {

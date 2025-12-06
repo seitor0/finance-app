@@ -71,105 +71,113 @@ async function handleChangeStatus(item: ToCollectItem, nuevoEstado: string) {
   }
 }
 
-
-
   return (
-    <div className="space-y-6 fade-up">
-      <h1 className="text-3xl font-semibold mb-2">Cosas por cobrar</h1>
-      <p className="text-slate-500 text-sm -mt-2 mb-4">
-        Cobros pendientes, facturados y por cobrar.
-      </p>
+    <div className="space-y-6 font-[Inter] text-slate-800">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold">Cosas por cobrar</h1>
+          <p className="text-sm text-slate-500">Gestioná facturas, cobranzas y su estado.</p>
+        </div>
 
-      {/* ===================== BOTÓN NUEVO ===================== */}
-      <button
-        onClick={() => {
-          setEditItem(null);
-          setShowForm(true);
-        }}
-        className="bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700"
-      >
-        + Nuevo cobro
-      </button>
-
-      {/* ===================== LISTADO ===================== */}
-      <div className="space-y-3">
-        {cosasPorCobrar.length === 0 && (
-          <p className="text-slate-500 text-sm">
-            No tenés cobros pendientes. 💸
-          </p>
-        )}
-
-        {cosasPorCobrar.map((item) => (
-          <div
-            key={item.id}
-            className="glass-card flex items-center justify-between"
-          >
-            {/* IZQUIERDA */}
-            <div>
-              <p className="font-semibold">{item.nombre}</p>
-
-              <p className="text-sm text-slate-500">
-                ${Number(item.monto).toLocaleString("es-AR")}
-                {item.vencimiento && <> · vence {item.vencimiento}</>}
-              </p>
-
-              {item.categoria && (
-                <p className="text-[11px] text-slate-400 mt-1">
-                  {item.categoria}
-                </p>
-              )}
-            </div>
-
-            {/* DERECHA */}
-            <div className="flex items-center gap-3">
-              {/* CAMBIAR ESTADO */}
-              <select
-                value={item.status}
-                onChange={(e) => handleChangeStatus(item, e.target.value)}
-                className="border rounded-lg px-2 py-1 text-sm"
-                disabled={item.status === "cobrado"}
-              >
-                {ESTADOS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-
-              {/* EDITAR */}
-              <button
-                onClick={() => {
-                  if (item.status === "cobrado") return alert("Este cobro ya fue acreditado y no puede editarse.");
-                  setEditItem(item);
-                  setShowForm(true);
-                }}
-                className="text-xs text-blue-600 hover:underline"
-              >
-                Editar
-              </button>
-
-              {/* BORRAR */}
-              <button
-                onClick={() => borrarCosaPorCobrar(item.id)}
-                className="text-xs text-rose-600 hover:underline"
-              >
-                Borrar
-              </button>
-            </div>
-          </div>
-        ))}
+        <button
+          onClick={() => {
+            setEditItem(null);
+            setShowForm(true);
+          }}
+          className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+        >
+          + Nuevo cobro
+        </button>
       </div>
 
-      {/* ===================== FORMULARIO ===================== */}
+      <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <table className="min-w-full divide-y divide-slate-100 text-sm">
+          <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-4 py-3 text-left">Nombre</th>
+              <th className="px-4 py-3 text-left">Categoría</th>
+              <th className="px-4 py-3 text-left">Monto</th>
+              <th className="px-4 py-3 text-left">Vencimiento</th>
+              <th className="px-4 py-3 text-left">Estado</th>
+              <th className="px-4 py-3 text-left">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 text-slate-600">
+            {cosasPorCobrar.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
+                  No tenés cobros pendientes.
+                </td>
+              </tr>
+            )}
+
+            {cosasPorCobrar.map((item) => (
+              <tr key={item.id} className="hover:bg-slate-50/70">
+                <td className="px-4 py-3 font-medium text-slate-700">{item.nombre}</td>
+                <td className="px-4 py-3">{item.categoria || "—"}</td>
+                <td className="px-4 py-3 font-semibold text-emerald-600">
+                  ${Number(item.monto).toLocaleString("es-AR")}
+                </td>
+                <td className="px-4 py-3">{item.vencimiento || "—"}</td>
+                <td className="px-4 py-3">
+                  <span className="inline-flex rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold capitalize">
+                    {item.status}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-wrap gap-2">
+                    <select
+                      value={item.status}
+                      onChange={(e) => handleChangeStatus(item, e.target.value)}
+                      disabled={item.status === "cobrado"}
+                      className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 disabled:bg-slate-100"
+                    >
+                      {ESTADOS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      onClick={() => {
+                        if (item.status === "cobrado") {
+                          alert("Este cobro ya fue acreditado y no puede editarse.");
+                          return;
+                        }
+                        setEditItem(item);
+                        setShowForm(true);
+                      }}
+                      className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      Editar
+                    </button>
+
+                    <button
+                      onClick={() => borrarCosaPorCobrar(item.id)}
+                      className="rounded-lg bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-100"
+                    >
+                      Borrar
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       {showForm && (
-        <FormPorCobrar
-          editItem={editItem}
-          onClose={() => {
-            setShowForm(false);
-            setEditItem(null);
-          }}
-          onSave={handleSave}
-        />
+        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+          <FormPorCobrar
+            editItem={editItem}
+            onClose={() => {
+              setShowForm(false);
+              setEditItem(null);
+            }}
+            onSave={handleSave}
+          />
+        </div>
       )}
     </div>
   );

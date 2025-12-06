@@ -15,6 +15,7 @@ export default function IngresosPage() {
       monto: Number(data.monto),
       fecha: data.fecha,
       categoria: data.categoria || "General",
+      tipo: "Ingreso",
     };
 
     if (editItem) {
@@ -27,66 +28,74 @@ export default function IngresosPage() {
   };
 
   return (
-    <div>
-      <h1 className="text-3xl font-semibold mb-6">Ingresos</h1>
+    <div className="space-y-6 font-[Inter] text-slate-800">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold">Ingresos</h1>
+          <p className="text-sm text-slate-500">Registrá y administrá tus entradas de dinero.</p>
+        </div>
 
-      <button
-        onClick={() => {
-          setEditItem(null);
-          setShowForm(true);
-        }}
-        className="mb-4 bg-blue-600 text-white px-4 py-2 rounded"
-      >
-        + Agregar ingreso
-      </button>
+        <button
+          onClick={() => {
+            setEditItem(null);
+            setShowForm(true);
+          }}
+          className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+        >
+          + Agregar ingreso
+        </button>
+      </div>
 
-      <table className="min-w-full bg-white shadow rounded">
-        <thead>
-          <tr className="border-b">
-            <th className="p-3 text-left">Fecha</th>
-            <th className="p-3 text-left">Descripción</th>
-            <th className="p-3 text-left">Monto</th>
-            <th className="p-3 text-left">Acciones</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {ingresos.length === 0 && (
+      <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <table className="min-w-full divide-y divide-slate-100 text-sm">
+          <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
-              <td colSpan={4} className="p-4 text-gray-500">
-                No hay ingresos cargados.
-              </td>
+              <th className="px-4 py-3 text-left">Fecha</th>
+              <th className="px-4 py-3 text-left">Descripción</th>
+              <th className="px-4 py-3 text-left">Monto</th>
+              <th className="px-4 py-3 text-left">Acciones</th>
             </tr>
-          )}
+          </thead>
+          <tbody className="divide-y divide-slate-100 text-slate-600">
+            {ingresos.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-4 py-6 text-center text-slate-400">
+                  No hay ingresos cargados.
+                </td>
+              </tr>
+            )}
 
-          {ingresos.map((item) => (
-            <tr key={item.id} className="border-b">
-              <td className="p-3">{item.fecha}</td>
-              <td className="p-3">{item.descripcion}</td>
-              <td className="p-3">${item.monto.toLocaleString("es-AR")}</td>
-
-              <td className="p-3 flex gap-2">
-                <button
-                  className="px-3 py-1 bg-yellow-500 text-white rounded"
-                  onClick={() => {
-                    setEditItem(item);
-                    setShowForm(true);
-                  }}
-                >
-                  Editar
-                </button>
-
-                <button
-                  className="px-3 py-1 bg-red-600 text-white rounded"
-                  onClick={() => borrarIngreso(item.id)}
-                >
-                  Borrar
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+            {ingresos.map((item) => (
+              <tr key={item.id} className="hover:bg-slate-50/70">
+                <td className="px-4 py-3 font-medium text-slate-700">{item.fecha}</td>
+                <td className="px-4 py-3">{item.descripcion}</td>
+                <td className="px-4 py-3 font-semibold text-slate-900">
+                  ${item.monto.toLocaleString("es-AR")}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                      onClick={() => {
+                        setEditItem(item);
+                        setShowForm(true);
+                      }}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      className="rounded-lg bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-100"
+                      onClick={() => borrarIngreso(item.id)}
+                    >
+                      Borrar
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {showForm && (
         <FormularioIngreso
