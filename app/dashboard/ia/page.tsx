@@ -32,7 +32,7 @@ export default function IAInputPage() {
           monto: data.monto,
           categoria: data.categoria,
           fecha: data.fecha,
-          tipo: "Ingreso",
+          tipo: "Ingreso" as const,
         });
       } else if (data.tipo === "gasto") {
         await agregarGasto({
@@ -40,7 +40,7 @@ export default function IAInputPage() {
           monto: data.monto,
           categoria: data.categoria,
           fecha: data.fecha,
-          tipo: "Gasto",
+          tipo: "Gasto" as const,
         });
       }
     } catch (e) {

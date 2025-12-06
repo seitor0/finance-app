@@ -90,7 +90,7 @@ export default function GastosPage() {
             if (editItem) {
               editarGasto(editItem.id, data);
             } else {
-              agregarGasto({ ...data, tipo: "Gasto" });
+              agregarGasto({ ...data, tipo: "Gasto" as const });
             }
             setShowForm(false);
           }}

@@ -16,7 +16,7 @@ export default function IngresosPage() {
       monto: Number(data.monto),
       fecha: data.fecha,
       categoria: data.categoria || "General",
-      tipo: "Ingreso",
+      tipo: "Ingreso" as const,
     };
 
     if (editItem) {

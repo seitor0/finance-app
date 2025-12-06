@@ -148,7 +148,7 @@ const totalUSD = useMemo(
           monto: json.monto,
           fecha: json.fecha,
           categoria: json.categoria,
-          tipo: "Gasto",
+          tipo: "Gasto" as const,
         });
       }
 
@@ -157,7 +157,7 @@ const totalUSD = useMemo(
           descripcion: json.descripcion,
           monto: json.monto,
           fecha: json.fecha,
-          tipo: "Ingreso",
+          tipo: "Ingreso" as const,
         });
       }
 
