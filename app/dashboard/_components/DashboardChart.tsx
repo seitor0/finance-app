@@ -147,7 +147,7 @@ export default function DashboardChart({ ingresos, gastos }: Props) {
               <XAxis dataKey="mes" />
               <YAxis />
               <Tooltip
-                formatter={(value: any) =>
+                formatter={(value: number | string) =>
                   `$ ${Number(value).toLocaleString("es-AR")}`
                 }
               />

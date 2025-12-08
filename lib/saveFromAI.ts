@@ -1,8 +1,15 @@
-import { db } from "./firebase";
-import { collection, addDoc } from "firebase/firestore";
-import { auth } from "./firebase";
+import { addDoc, collection } from "firebase/firestore";
 
-export async function saveFromAI(data: any) {
+import { auth, db } from "./firebase";
+
+type AIData = {
+  tipo: "Gasto" | "Ingreso";
+  descripcion?: string;
+  monto: number;
+  categoria?: string;
+};
+
+export async function saveFromAI(data: AIData) {
   const user = auth.currentUser;
   if (!user) return { ok: false, error: "No autenticado" };
 
@@ -35,7 +42,8 @@ export async function saveFromAI(data: any) {
     }
 
     return { ok: false, error: "Tipo no reconocido" };
-  } catch (e: any) {
-    return { ok: false, error: e.message };
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : "Error desconocido";
+    return { ok: false, error: errorMessage };
   }
 }

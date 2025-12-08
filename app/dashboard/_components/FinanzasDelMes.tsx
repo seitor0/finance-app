@@ -10,7 +10,6 @@ type Gasto = {
 };
 
 type Props = {
-  ingresos: any[];
   gastos: Gasto[];
 };
 

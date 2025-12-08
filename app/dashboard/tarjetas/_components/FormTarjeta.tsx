@@ -1,12 +1,13 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import Link from "next/link";
 
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
+import { calcularCiclo, formatoInputDate } from "@/lib/tarjetaCiclos";
 
 type FormState = {
   descripcion: string;
@@ -14,6 +15,17 @@ type FormState = {
   tarjetaId: string;
   fechaCompra: string;
   fechaPago: string;
+  categoriaId: string;
+};
+
+type TarjetaConfig = {
+  id: string;
+  nombre: string;
+  banco?: string;
+  cierre?: number;
+  vencimiento?: number;
+  dia_cierre?: number;
+  dia_vencimiento?: number;
 };
 
 const initialState = (): FormState => {
@@ -23,20 +35,26 @@ const initialState = (): FormState => {
     monto: "",
     tarjetaId: "",
     fechaCompra: hoy,
-    fechaPago: hoy,
+    fechaPago: "",
+    categoriaId: "",
   };
 };
 
 export default function FormTarjeta() {
-  const { agregarGastoTarjeta } = useApp();
+  const { agregarGastoTarjeta, categorias } = useApp();
   const { user } = useAuth();
   const [form, setForm] = useState<FormState>(initialState);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [tarjetas, setTarjetas] = useState<any[]>([]);
+  const [tarjetas, setTarjetas] = useState<TarjetaConfig[]>([]);
   const [loadingTarjetas, setLoadingTarjetas] = useState(true);
   const [tarjetasError, setTarjetasError] = useState<string | null>(null);
+
+  const categoriasGasto = useMemo(
+    () => categorias.filter((c) => c.tipo === "Gasto"),
+    [categorias]
+  );
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -58,7 +76,7 @@ export default function FormTarjeta() {
       ref,
       (snap) => {
         setTarjetas(
-          snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }))
+          snap.docs.map((d) => ({ id: d.id, ...(d.data() as TarjetaConfig) }))
         );
         setLoadingTarjetas(false);
         setTarjetasError(null);
@@ -70,7 +88,39 @@ export default function FormTarjeta() {
     );
 
     return () => unsub();
-  }, [user?.uid]);
+  }, [user]);
+
+  useEffect(() => {
+    if (!form.categoriaId && categoriasGasto.length > 0) {
+      setForm((prev) => ({ ...prev, categoriaId: prev.categoriaId || categoriasGasto[0].id }));
+    }
+  }, [categoriasGasto, form.categoriaId]);
+
+  useEffect(() => {
+    const tarjetaSeleccionada = tarjetas.find((t) => t.id === form.tarjetaId);
+    if (!tarjetaSeleccionada || !form.fechaCompra) {
+      setForm((prev) => (prev.fechaPago === "" ? prev : { ...prev, fechaPago: "" }));
+      return;
+    }
+
+    const diaCierre = tarjetaSeleccionada.dia_cierre ?? tarjetaSeleccionada.cierre;
+    const diaVenc = tarjetaSeleccionada.dia_vencimiento ?? tarjetaSeleccionada.vencimiento;
+
+    if (!diaCierre || !diaVenc) {
+      setForm((prev) => (prev.fechaPago === "" ? prev : { ...prev, fechaPago: "" }));
+      return;
+    }
+
+    try {
+      const ciclo = calcularCiclo(form.fechaCompra, diaCierre, diaVenc);
+      const nuevaFecha = formatoInputDate(ciclo.fecha_pago);
+      setForm((prev) =>
+        prev.fechaPago === nuevaFecha ? prev : { ...prev, fechaPago: nuevaFecha }
+      );
+    } catch {
+      setForm((prev) => (prev.fechaPago === "" ? prev : { ...prev, fechaPago: "" }));
+    }
+  }, [form.fechaCompra, form.tarjetaId, tarjetas]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -99,23 +149,34 @@ export default function FormTarjeta() {
       return;
     }
 
+    if (!form.fechaPago) {
+      setError("No pudimos calcular la fecha de pago. Revisá la tarjeta seleccionada.");
+      return;
+    }
+
+    const categoriaSeleccionada = categoriasGasto.find(
+      (c) => c.id === form.categoriaId
+    );
+
     setLoading(true);
     try {
       await agregarGastoTarjeta({
         descripcion: form.descripcion.trim(),
         monto: montoNumber,
         fecha: form.fechaCompra,
-        categoria: "Tarjeta",
+        categoria: categoriaSeleccionada?.nombre ?? "Tarjetas",
         tipo: "Tarjeta",
-        tarjeta: tarjetaSeleccionada.nombre,
         tarjeta_id: tarjetaSeleccionada.id,
-        fecha_pago: form.fechaPago,
       });
       setSuccess("Gasto con tarjeta cargado");
       setForm(initialState());
     } catch (err) {
       console.error(err);
-      setError("No se pudo guardar el gasto");
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("No se pudo guardar el gasto");
+      }
     } finally {
       setLoading(false);
     }
@@ -194,6 +255,34 @@ export default function FormTarjeta() {
               </p>
             )}
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">
+              Categoría
+            </label>
+            <select
+              name="categoriaId"
+              value={form.categoriaId}
+              onChange={handleChange}
+              className="w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
+            >
+              <option value="">
+                {categoriasGasto.length === 0
+                  ? "Agregá categorías en Configuración"
+                  : "Seleccioná una categoría"}
+              </option>
+              {categoriasGasto.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+            </select>
+            {categoriasGasto.length === 0 && (
+              <p className="mt-2 text-xs text-amber-600">
+                Creá categorías de gasto desde Configuración para clasificarlas acá.
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -218,9 +307,15 @@ export default function FormTarjeta() {
               type="date"
               name="fechaPago"
               value={form.fechaPago}
-              onChange={handleChange}
-              className="w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
+              readOnly
+              disabled
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-600"
             />
+            {form.tarjetaId && !form.fechaPago && (
+              <p className="mt-2 text-xs text-amber-600">
+                Configurá día de cierre y vencimiento para calcular el pago automáticamente.
+              </p>
+            )}
           </div>
         </div>
 

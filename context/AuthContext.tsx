@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import {
+  type User,
   GoogleAuthProvider,
   onAuthStateChanged,
   signInWithPopup,
@@ -19,7 +20,7 @@ import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
 type AuthContextType = {
-  user: any;
+  user: User | null;
   loadingUser: boolean;
   loginLoading: boolean;
   loginWithGoogle: () => Promise<void>;
@@ -31,7 +32,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [loginLoading, setLoginLoading] = useState(false);
 

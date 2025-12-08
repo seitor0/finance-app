@@ -21,7 +21,10 @@ export default function FiltrosMovimientos({
     orden: "recientes",
   });
 
-  const update = (campo: keyof FiltroMovimientos, valor: any) => {
+  const update = <K extends keyof FiltroMovimientos>(
+    campo: K,
+    valor: FiltroMovimientos[K]
+  ) => {
     const nuevo = { ...filtros, [campo]: valor };
     setFiltros(nuevo);
     onChange(nuevo);
@@ -46,7 +49,7 @@ export default function FiltrosMovimientos({
         <label className="text-sm text-gray-600">Tipo</label>
         <select
           value={filtros.tipo}
-          onChange={(e) => update("tipo", e.target.value)}
+          onChange={(e) => update("tipo", e.target.value as FiltroMovimientos["tipo"])}
           className="border px-3 py-2 rounded"
         >
           <option value="Todos">Todos</option>
@@ -60,7 +63,7 @@ export default function FiltrosMovimientos({
         <label className="text-sm text-gray-600">Rango</label>
         <select
           value={filtros.rango}
-          onChange={(e) => update("rango", e.target.value)}
+          onChange={(e) => update("rango", e.target.value as FiltroMovimientos["rango"])}
           className="border px-3 py-2 rounded"
         >
           <option value="mes">Este mes</option>
@@ -74,7 +77,7 @@ export default function FiltrosMovimientos({
         <label className="text-sm text-gray-600">Orden</label>
         <select
           value={filtros.orden}
-          onChange={(e) => update("orden", e.target.value)}
+          onChange={(e) => update("orden", e.target.value as FiltroMovimientos["orden"])}
           className="border px-3 py-2 rounded"
         >
           <option value="recientes">Más recientes</option>

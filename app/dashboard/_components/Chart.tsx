@@ -50,7 +50,7 @@ export default function Chart({ data }: ChartProps) {
           ))}
         </Pie>
         <Tooltip
-          formatter={(value: any) =>
+          formatter={(value: number | string) =>
             `\$${Number(value).toLocaleString("es-AR")}`
           }
         />

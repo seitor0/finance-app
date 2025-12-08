@@ -9,6 +9,7 @@ import type {
   ToCollectItem,
   CobroStatus,
 } from "@/context/AppContext";
+import type { ResultadoIA } from "@/app/api/ai-input/schema";
 import AppleRings from "./_components/AppleRings";
 import FinanzasDelMes from "./_components/FinanzasDelMes";
 import WidgetDisponible from "./_components/WidgetDisponible";
@@ -25,6 +26,8 @@ export default function DashboardPage() {
   const {
     ingresos,
     gastos,
+    gastosPagados,
+    gastosConsumo,
     ahorros,
     cosasPorPagar,
     cosasPorCobrar,
@@ -34,6 +37,8 @@ export default function DashboardPage() {
     cambiarEstadoPago,
     editarCosaPorCobrar,
   } = useApp();
+
+  const [modoHistorial, setModoHistorial] = useState<"pagado" | "consumo">("pagado");
 
   // ============================
 // FECHA ACTUAL
@@ -49,8 +54,8 @@ const mesActualKey = `${añoActual}-${String(mesActualNumero).padStart(2, "0")}`
 const totalIngresosMes = useMemo(
   () =>
     ingresos
-      .filter((i: any) => (i.fecha ?? "").startsWith(mesActualKey))
-      .reduce((acc: number, i: any) => acc + Number(i.monto ?? 0), 0),
+      .filter((i) => (i.fecha ?? "").startsWith(mesActualKey))
+      .reduce((acc, i) => acc + Number(i.monto ?? 0), 0),
   [ingresos, mesActualKey]
 );
 
@@ -60,8 +65,8 @@ const totalIngresosMes = useMemo(
 const totalGastosMes = useMemo(
   () =>
     gastos
-      .filter((g: any) => (g.fecha ?? "").startsWith(mesActualKey))
-      .reduce((acc: number, g: any) => acc + Number(g.monto ?? 0), 0),
+      .filter((g) => (g.fecha ?? "").startsWith(mesActualKey))
+      .reduce((acc, g) => acc + Number(g.monto ?? 0), 0),
   [gastos, mesActualKey]
 );
 
@@ -71,7 +76,7 @@ const totalGastosMes = useMemo(
 const deudasMes = useMemo(
   () =>
     cosasPorPagar.filter(
-      (c: any) =>
+      (c) =>
         (c.status === "falta" || c.status === "pospuesto") &&
         (!(c.vencimiento ?? "") || (c.vencimiento ?? "").startsWith(mesActualKey))
     ),
@@ -79,7 +84,7 @@ const deudasMes = useMemo(
 );
 
 const totalDeudasMes = useMemo(
-  () => deudasMes.reduce((acc: number, c: any) => acc + Number(c.monto ?? 0), 0),
+  () => deudasMes.reduce((acc, c) => acc + Number(c.monto ?? 0), 0),
   [deudasMes]
 );
 
@@ -89,7 +94,7 @@ const totalDeudasMes = useMemo(
 const cobrosMes = useMemo(
   () =>
     cosasPorCobrar.filter(
-      (c: any) =>
+      (c) =>
         c.status !== "cobrado" &&
         (!(c.vencimiento ?? "") || (c.vencimiento ?? "").startsWith(mesActualKey))
     ),
@@ -97,7 +102,7 @@ const cobrosMes = useMemo(
 );
 
 const totalCobrosPendientes = useMemo(
-  () => cobrosMes.reduce((acc: number, c: any) => acc + Number(c.monto ?? 0), 0),
+  () => cobrosMes.reduce((acc, c) => acc + Number(c.monto ?? 0), 0),
   [cobrosMes]
 );
 
@@ -111,22 +116,36 @@ const gastoIdeal = totalIngresosMes * 0.5;
 // ============================
 // ÚLTIMOS MOVIMIENTOS
 // ============================
-const movimientos: MovimientoUI[] = useMemo(() => {
-  const lista: MovimientoUI[] = [
-    ...ingresos.map((i: any) => ({ ...i, monto: i.monto ?? 0, tipo: "Ingreso" as const })),
-    ...gastos.map((g: any) => ({ ...g, monto: g.monto ?? 0, tipo: "Gasto" as const })),
-  ];
+  const movimientosHistorial = useMemo(() => {
+    const fuenteGastos = modoHistorial === "pagado" ? gastosPagados : gastosConsumo;
+    const lista: MovimientoUI[] = [
+      ...ingresos.map((i) => ({
+        id: `ing-${i.id}`,
+        descripcion: i.descripcion || "Ingreso",
+        monto: i.monto ?? 0,
+        fecha: i.fecha ?? "",
+        tipo: "Ingreso" as const,
+      })),
+      ...fuenteGastos.map((g) => ({
+        id: `gas-${g.id}`,
+        descripcion: g.descripcion || "Gasto",
+        monto: g.monto ?? 0,
+        fecha: g.fecha ?? "",
+        tipo: "Gasto" as const,
+      })),
+    ];
 
-  return lista
-    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
-    .slice(0, 5);
-}, [ingresos, gastos]);
+    return lista
+      .filter((m) => m.fecha)
+      .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+      .slice(0, 8);
+  }, [ingresos, gastosPagados, gastosConsumo, modoHistorial]);
 
 // ============================
 // AHORROS USD
 // ============================
 const totalUSD = useMemo(
-  () => (ahorros ?? []).reduce((acc: number, a: any) => acc + (a.usd ?? 0), 0),
+  () => (ahorros ?? []).reduce((acc, a) => acc + (a.usd ?? 0), 0),
   [ahorros]
 );
 
@@ -140,7 +159,7 @@ const totalUSD = useMemo(
 
   const ultimosMovimientos = useMemo<MovimientoDetalle[]>(() => {
     const ingresoMovs = ingresos.map(
-      (i: any): MovimientoDetalle => ({
+      (i): MovimientoDetalle => ({
         id: `ing-${i.id}`,
         tipo: "Ingreso",
         descripcion: i.descripcion || "Ingreso",
@@ -150,7 +169,7 @@ const totalUSD = useMemo(
     );
 
     const gastoMovs = gastos.map(
-      (g: any): MovimientoDetalle => ({
+      (g): MovimientoDetalle => ({
         id: `gas-${g.id}`,
         tipo: "Gasto",
         descripcion: g.descripcion || "Gasto",
@@ -160,9 +179,9 @@ const totalUSD = useMemo(
     );
 
     const deudasPagadas = cosasPorPagar
-      .filter((c: any) => c.status === "pagado")
+      .filter((c) => c.status === "pagado")
       .map(
-        (c: any): MovimientoDetalle => ({
+        (c): MovimientoDetalle => ({
           id: `deu-${c.id}`,
           tipo: "Deuda",
           descripcion: c.nombre || "Pago de deuda",
@@ -182,9 +201,11 @@ const totalUSD = useMemo(
   const proximosVencimientos = useMemo(() => {
     const hoy = new Date();
     return cosasPorPagar
-      .filter((c: any) => c.status !== "pagado" && c.vencimiento)
-      .map((c: any) => {
-        const fecha = new Date(c.vencimiento as string);
+      .filter((c): c is ToPayItem & { vencimiento: string } => {
+        return c.status !== "pagado" && Boolean(c.vencimiento);
+      })
+      .map((c) => {
+        const fecha = new Date(c.vencimiento);
         const diffDias = Math.ceil(
           (fecha.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24)
         );
@@ -200,14 +221,14 @@ const totalUSD = useMemo(
     const ingresoMapa: Record<number, number> = {};
     const gastoMapa: Record<number, number> = {};
 
-    ingresos.forEach((i: any) => {
+    ingresos.forEach((i) => {
       if ((i.fecha ?? "").startsWith(mesActualKey)) {
         const dia = Number(i.fecha?.slice(8, 10)) || 1;
         ingresoMapa[dia] = (ingresoMapa[dia] || 0) + Number(i.monto ?? 0);
       }
     });
 
-    gastos.forEach((g: any) => {
+    gastos.forEach((g) => {
       if ((g.fecha ?? "").startsWith(mesActualKey)) {
         const dia = Number(g.fecha?.slice(8, 10)) || 1;
         gastoMapa[dia] = (gastoMapa[dia] || 0) + Number(g.monto ?? 0);
@@ -359,7 +380,7 @@ const totalUSD = useMemo(
   // ============================
   const [texto, setTexto] = useState("");
   const [loading, setLoading] = useState(false);
-  const [respuesta, setRespuesta] = useState<any>(null);
+  const [respuesta, setRespuesta] = useState<ResultadoIA | Record<string, unknown> | null>(null);
 
   async function enviarAI() {
     if (!texto.trim()) return;
@@ -371,7 +392,7 @@ const totalUSD = useMemo(
         body: JSON.stringify({ texto }),
       });
 
-      const json = await resp.json();
+      const json = (await resp.json()) as ResultadoIA | Record<string, unknown>;
       setRespuesta(json);
 
       if (json.tipo === "gasto") {
@@ -781,35 +802,77 @@ const totalUSD = useMemo(
 
       {/* ============================ FILA 3 — Últimos movimientos ============================ */}
       <section className="glass-card">
-        <h2 className="text-lg font-semibold mb-4">Últimos movimientos</h2>
-        <div className="space-y-3">
-          {movimientos.map((m) => (
-            <div
-              key={m.id}
-              className={`rounded-2xl p-4 flex items-center justify-between shadow-md text-white bg-gradient-to-r ${
-                m.tipo === "Ingreso"
-                  ? "from-emerald-500 via-emerald-400 to-emerald-500"
-                  : "from-rose-500 via-rose-400 to-rose-500"
-              }`}
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold">Histórico de movimientos</h2>
+            <p className="text-sm text-slate-500">
+              {modoHistorial === "pagado"
+                ? "Mostrando ingresos y gastos ya pagados."
+                : "Mostrando ingresos y todos los consumos (incluye tarjeta pendiente)."}
+            </p>
+          </div>
+          <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-50 p-1 text-sm font-medium">
+            <button
+              type="button"
+              onClick={() => setModoHistorial("pagado")}
+              className={clsx(
+                "px-4 py-1.5 rounded-2xl transition",
+                modoHistorial === "pagado"
+                  ? "bg-white text-slate-900 shadow"
+                  : "text-slate-500"
+              )}
             >
-              <div>
-                <p className="text-xs tracking-wide opacity-80">{m.tipo}</p>
-                <p className="text-sm font-semibold">{m.descripcion}</p>
-                <p className="text-[11px] opacity-80 mt-1">
-                  {new Date(m.fecha).toLocaleDateString("es-AR", {
-                    day: "2-digit",
-                    month: "short",
-                  })}
+              Pagado
+            </button>
+            <button
+              type="button"
+              onClick={() => setModoHistorial("consumo")}
+              className={clsx(
+                "px-4 py-1.5 rounded-2xl transition",
+                modoHistorial === "consumo"
+                  ? "bg-white text-slate-900 shadow"
+                  : "text-slate-500"
+              )}
+            >
+              Consumo
+            </button>
+          </div>
+        </div>
+
+        {movimientosHistorial.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            Todavía no hay movimientos en este modo.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {movimientosHistorial.map((m) => (
+              <div
+                key={m.id}
+                className={`rounded-2xl p-4 flex items-center justify-between shadow-md text-white bg-gradient-to-r ${
+                  m.tipo === "Ingreso"
+                    ? "from-emerald-500 via-emerald-400 to-emerald-500"
+                    : "from-rose-500 via-rose-400 to-rose-500"
+                }`}
+              >
+                <div>
+                  <p className="text-xs tracking-wide opacity-80">{m.tipo}</p>
+                  <p className="text-sm font-semibold">{m.descripcion}</p>
+                  <p className="text-[11px] opacity-80 mt-1">
+                    {new Date(m.fecha).toLocaleDateString("es-AR", {
+                      day: "2-digit",
+                      month: "short",
+                    })}
+                  </p>
+                </div>
+
+                <p className="text-lg font-semibold">
+                  {m.tipo === "Ingreso" ? "+" : "-"}$
+                  {Number(m.monto).toLocaleString("es-AR")}
                 </p>
               </div>
-
-              <p className="text-lg font-semibold">
-                {m.tipo === "Ingreso" ? "+" : "-"}$
-                {Number(m.monto).toLocaleString("es-AR")}
-              </p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

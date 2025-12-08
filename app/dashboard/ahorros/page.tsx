@@ -8,7 +8,6 @@ export default function AhorrosPage() {
   const { ahorros, borrarAhorro } = useApp();
 
   const [showForm, setShowForm] = useState(false);
-  const [editItem, setEditItem] = useState(null);
 
   const totalUSD = ahorros.reduce((acc, a) => acc + a.usd, 0);
 
@@ -22,7 +21,6 @@ export default function AhorrosPage() {
 
         <button
           onClick={() => {
-            setEditItem(null);
             setShowForm(true);
           }}
           className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
@@ -63,7 +61,6 @@ export default function AhorrosPage() {
                     <div className="flex flex-wrap gap-2">
                       <button
                         onClick={() => {
-                          setEditItem(a);
                           setShowForm(true);
                         }}
                         className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
@@ -90,11 +87,9 @@ export default function AhorrosPage() {
           <FormularioAhorro
             onClose={() => {
               setShowForm(false);
-              setEditItem(null);
             }}
             onSuccess={() => {
               setShowForm(false);
-              setEditItem(null);
             }}
           />
         </div>

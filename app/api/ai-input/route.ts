@@ -9,7 +9,8 @@ const groq = new Groq({
 
 export async function POST(req: Request) {
   try {
-    const { texto } = await req.json();
+    const body = (await req.json()) as { texto?: string };
+    const texto = body?.texto ?? "";
 
     // FECHA ACTUAL DEL SERVIDOR EN FORMATO YYYY-MM-DD
     const HOY = new Date().toISOString().slice(0, 10);
@@ -71,10 +72,10 @@ FORMATO DE RESPUESTA
 
     const raw = chat.choices[0]?.message?.content?.trim();
 
-    return new Response(raw, {
+    return new Response(raw ?? "{}", {
       headers: { "Content-Type": "application/json" },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return new Response(
       JSON.stringify({ error: "Error procesando IA", detalle: String(err) }),
       { status: 500 }

@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
-const CATEGORIAS = [
+import { useApp, type Movimiento } from "@/context/AppContext";
+
+const DEFAULT_GASTO_CATEGORIES = [
   "Comida",
   "Supermercado",
   "Transporte",
@@ -18,28 +20,54 @@ const CATEGORIAS = [
   "Otros",
 ];
 
-export default function FormularioGasto({ onClose, onSave, editItem }) {
+interface FormularioGastoProps {
+  onClose: () => void;
+  onSave: (data: Omit<Movimiento, "id">) => void;
+  editItem?: Movimiento | null;
+}
+
+export default function FormularioGasto({ onClose, onSave, editItem }: FormularioGastoProps) {
+  const { categorias } = useApp();
   const [descripcion, setDescripcion] = useState("");
   const [monto, setMonto] = useState("");
   const [fecha, setFecha] = useState("");
   const [categoria, setCategoria] = useState("");
 
+  const categoriasGasto = useMemo(
+    () => categorias.filter((c) => c.tipo === "Gasto"),
+    [categorias]
+  );
+
+  const categoriasDisponibles = useMemo(() => {
+    const nombres = categoriasGasto.map((c) => c.nombre);
+    return nombres.length > 0 ? nombres : DEFAULT_GASTO_CATEGORIES;
+  }, [categoriasGasto]);
+
   // ==========================
   // Cargar datos al editar
   // ==========================
   useEffect(() => {
-    if (editItem) {
-      setDescripcion(editItem.descripcion);
-      setMonto(editItem.monto);
-      setFecha(editItem.fecha);
-      setCategoria(editItem.categoria || "");
-    }
-  }, [editItem]);
+    const timer = setTimeout(() => {
+      if (editItem) {
+        setDescripcion(editItem.descripcion);
+        setMonto(String(editItem.monto ?? ""));
+        setFecha(editItem.fecha);
+        setCategoria(editItem.categoria || "");
+      } else if (!categoria) {
+        setDescripcion("");
+        setMonto("");
+        setFecha(new Date().toISOString().slice(0, 10));
+        setCategoria(categoriasDisponibles[0] || "");
+      }
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [editItem, categoria, categoriasDisponibles]);
 
   // ==========================
   // Normalizador de texto
   // ==========================
-  function normalizarTexto(str) {
+  function normalizarTexto(str: string) {
     return (str || "")
       .toLowerCase()
       .replace(/hoy|ayer|gaste|gasté|compré|pagué|saqué|me salió/gi, "")
@@ -49,17 +77,18 @@ export default function FormularioGasto({ onClose, onSave, editItem }) {
   // ==========================
   // IA: Categorizar automáticamente
   // ==========================
-  async function categorizarAutomaticamente(texto) {
-    if (!texto || texto.length < 3) return;
+  const categorizarAutomaticamente = useCallback(
+    async (texto: string) => {
+      if (!texto || texto.length < 3) return;
 
-    const limpio = normalizarTexto(texto);
+      const limpio = normalizarTexto(texto);
 
     const prompt = `
 Sos un asistente experto en finanzas personales de Argentina.
 Tu tarea es analizar un gasto y responder SOLO con la categoría correcta.
 
 Categorías permitidas:
-${CATEGORIAS.join(", ")}
+${categoriasDisponibles.join(", ")}
 
 Reglas:
 - Respondé SOLO con la categoría exacta.
@@ -69,38 +98,46 @@ Reglas:
 Texto: "${limpio}"
 `;
 
-    try {
-      const resp = await fetch("/api/ia-categorizar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
-      });
+      try {
+        const resp = await fetch("/api/ia-categorizar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt }),
+        });
 
-      const json = await resp.json();
-      if (json.categoria) {
-        setCategoria(json.categoria);
+        const json = (await resp.json()) as { categoria?: string };
+        if (json.categoria) {
+          setCategoria(json.categoria);
+        }
+      } catch (e) {
+        console.error("Error IA:", e);
       }
-    } catch (e) {
-      console.error("Error IA:", e);
-    }
-  }
+    },
+    [categoriasDisponibles]
+  );
 
   // Detectar categoría cuando el usuario escribe
   useEffect(() => {
-    if (!editItem) categorizarAutomaticamente(descripcion);
-  }, [descripcion]);
+    if (editItem) return;
+    const timer = setTimeout(() => {
+      void categorizarAutomaticamente(descripcion);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [descripcion, editItem, categorizarAutomaticamente]);
 
   // ==========================
   // Submit
   // ==========================
-  const submit = (e) => {
+  const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    const categoriaSeleccionada = categoria || categoriasDisponibles[0] || "Otros";
 
     onSave({
       descripcion,
-      monto,
+      monto: Number(monto),
       fecha,
-      categoria: categoria || "Otros",
+      categoria: categoriaSeleccionada,
     });
   };
 
@@ -148,8 +185,11 @@ Texto: "${limpio}"
           value={categoria}
           onChange={(e) => setCategoria(e.target.value)}
         >
-          {CATEGORIAS.map((c) => (
-            <option key={c}>{c}</option>
+          <option value="">Seleccioná una categoría</option>
+          {categoriasDisponibles.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
           ))}
         </select>
 

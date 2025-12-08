@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useApp } from "@/context/AppContext";
+import { useApp, type ToPayItem } from "@/context/AppContext";
 import FormPorPagar from "./FormPorPagar";
 
 export default function CosasPorPagarPage() {
@@ -13,7 +13,7 @@ export default function CosasPorPagarPage() {
   } = useApp();
 
   const [showForm, setShowForm] = useState(false);
-  const [editItem, setEditItem] = useState<any>(null);
+  const [editItem, setEditItem] = useState<ToPayItem | null>(null);
 
   return (
     <div className="space-y-6 font-[Inter] text-slate-800">

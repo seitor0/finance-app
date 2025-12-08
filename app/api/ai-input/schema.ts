@@ -1,21 +1,3 @@
-function detectarCategoria(texto: string): string {
-  const t = texto.toLowerCase();
-
-  if (t.includes("alquiler") || t.includes("renta")) return "Alquiler";
-  if (t.includes("expensa")) return "Expensas";
-  if (t.includes("tarjeta") || t.includes("naranja") || t.includes("visa") || t.includes("master")) return "Tarjeta";
-  if (t.includes("luz") || t.includes("gas") || t.includes("agua") || t.includes("servicio")) return "Servicios";
-  if (t.includes("super") || t.includes("kilo") || t.includes("mercado")) return "Supermercado";
-  if (t.includes("nafta") || t.includes("subte") || t.includes("colectivo") || t.includes("uber")) return "Transporte";
-  if (t.includes("medico") || t.includes("salud") || t.includes("obra social")) return "Salud";
-  if (t.includes("colegio") || t.includes("cuota") || t.includes("educación")) return "Educación";
-  if (t.includes("viatico") || t.includes("viáticos") || t.includes("viaje")) return "Viáticos";
-  if (t.includes("carmela")) return "Gastos fijos"; // ❤️ tu caso
-
-  return "Otros";
-}
-
-
 // ---- Tipos que usa el dashboard ----
 
 export type ResultadoIA =

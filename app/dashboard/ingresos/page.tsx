@@ -8,9 +8,9 @@ import FormularioIngreso from "./FormularioIngreso";
 export default function IngresosPage() {
   const { ingresos, agregarIngreso, editarIngreso, borrarIngreso } = useApp();
   const [showForm, setShowForm] = useState(false);
-  const [editItem, setEditItem] = useState(null);
+  const [editItem, setEditItem] = useState<Movimiento | null>(null);
 
-  const handleSave = (data: any) => {
+  const handleSave = (data: Omit<Movimiento, "id">) => {
     const payload: Omit<Movimiento, "id"> = {
       descripcion: data.descripcion,
       monto: Number(data.monto),
@@ -20,9 +20,9 @@ export default function IngresosPage() {
     };
 
     if (editItem) {
-      editarIngreso(editItem.id, payload);
+      void editarIngreso(editItem.id, payload);
     } else {
-      agregarIngreso(payload);
+      void agregarIngreso(payload);
     }
 
     setShowForm(false);

@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 
 import { useAuth } from "@/context/AuthContext";
+import { useApp } from "@/context/AppContext";
 import { db } from "@/lib/firebase";
 
 interface TarjetaConfig {
@@ -32,6 +33,12 @@ const emptyForm = {
 
 export default function ConfiguracionPage() {
   const { user } = useAuth();
+  const {
+    categorias,
+    agregarCategoria,
+    editarCategoria,
+    borrarCategoria,
+  } = useApp();
   const [tarjetas, setTarjetas] = useState<TarjetaConfig[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -39,12 +46,25 @@ export default function ConfiguracionPage() {
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
+  const emptyCategoriaForm = {
+    nombre: "",
+    color: "#2563eb",
+    tipo: "Gasto" as "Gasto" | "Ingreso",
+  };
+  const [categoriaForm, setCategoriaForm] = useState(emptyCategoriaForm);
+  const [categoriaEditingId, setCategoriaEditingId] = useState<string | null>(null);
+  const [categoriaSaving, setCategoriaSaving] = useState(false);
+  const [categoriaStatus, setCategoriaStatus] = useState<
+    { type: "success" | "error"; message: string } | null
+  >(null);
 
   useEffect(() => {
     if (!user) {
-      setTarjetas([]);
-      setListLoading(false);
-      return;
+      const timer = setTimeout(() => {
+        setTarjetas([]);
+        setListLoading(false);
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
     setListLoading(true);
@@ -53,7 +73,10 @@ export default function ConfiguracionPage() {
       ref,
       (snap) => {
         setTarjetas(
-          snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as TarjetaConfig[]
+          snap.docs.map((d) => {
+            const data = d.data() as Omit<TarjetaConfig, "id">;
+            return { id: d.id, ...data };
+          })
         );
         setListLoading(false);
         setListError(null);
@@ -65,7 +88,7 @@ export default function ConfiguracionPage() {
     );
 
     return () => unsub();
-  }, [user?.uid]);
+  }, [user]);
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement>
@@ -102,7 +125,7 @@ export default function ConfiguracionPage() {
     };
 
     const cleanPayload = Object.fromEntries(
-      Object.entries(payload).filter(([_, v]) => v !== undefined && v !== null)
+      Object.entries(payload).filter(([, v]) => v !== undefined && v !== null)
     );
 
     setSaving(true);
@@ -147,6 +170,85 @@ export default function ConfiguracionPage() {
     } catch (err) {
       console.error(err);
       setStatus({ type: "error", message: "No se pudo eliminar la tarjeta." });
+    }
+  };
+
+  const handleCategoriaChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setCategoriaForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const resetCategoriaForm = () => {
+    setCategoriaForm(emptyCategoriaForm);
+    setCategoriaEditingId(null);
+  };
+
+  const handleCategoriaSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setCategoriaStatus(null);
+
+    if (!user) {
+      setCategoriaStatus({
+        type: "error",
+        message: "Iniciá sesión para gestionar tus categorías.",
+      });
+      return;
+    }
+
+    if (!categoriaForm.nombre.trim()) {
+      setCategoriaStatus({ type: "error", message: "Nombre obligatorio." });
+      return;
+    }
+
+    const payload = {
+      nombre: categoriaForm.nombre.trim(),
+      color: categoriaForm.color || "#2563eb",
+      tipo: categoriaForm.tipo,
+    };
+
+    setCategoriaSaving(true);
+    try {
+      if (categoriaEditingId) {
+        await editarCategoria(categoriaEditingId, payload);
+        setCategoriaStatus({ type: "success", message: "Categoría actualizada ✅" });
+      } else {
+        await agregarCategoria(payload);
+        setCategoriaStatus({ type: "success", message: "Categoría creada ✅" });
+      }
+      resetCategoriaForm();
+    } catch (error) {
+      console.error(error);
+      setCategoriaStatus({ type: "error", message: "No se pudo guardar la categoría." });
+    } finally {
+      setCategoriaSaving(false);
+    }
+  };
+
+  const handleCategoriaEdit = (cat: typeof categorias[number]) => {
+    setCategoriaForm({
+      nombre: cat.nombre,
+      color: cat.color || "#2563eb",
+      tipo: cat.tipo,
+    });
+    setCategoriaEditingId(cat.id);
+    setCategoriaStatus(null);
+  };
+
+  const handleCategoriaDelete = async (id: string) => {
+    if (!user) return;
+    if (!confirm("¿Eliminar esta categoría? No afecta movimientos históricos.")) return;
+    setCategoriaStatus(null);
+    try {
+      await borrarCategoria(id);
+      if (categoriaEditingId === id) {
+        resetCategoriaForm();
+      }
+      setCategoriaStatus({ type: "success", message: "Categoría eliminada." });
+    } catch (error) {
+      console.error(error);
+      setCategoriaStatus({ type: "error", message: "No se pudo eliminar la categoría." });
     }
   };
 
@@ -252,6 +354,132 @@ export default function ConfiguracionPage() {
             )}
           </div>
         </form>
+      </section>
+
+      <section className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-2 mb-4">
+          <h2 className="text-xl font-semibold">Categorías</h2>
+          <p className="text-sm text-slate-500">
+            Personalizá cómo clasificás ingresos y gastos. Impacta en formularios y reportes.
+          </p>
+        </div>
+
+        {categoriaStatus && (
+          <p
+            className={`mb-4 rounded-2xl px-3 py-2 text-sm ${
+              categoriaStatus.type === "success"
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-rose-50 text-rose-600"
+            }`}
+          >
+            {categoriaStatus.message}
+          </p>
+        )}
+
+        <form onSubmit={handleCategoriaSubmit} className="grid gap-4 md:grid-cols-4">
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-slate-600 mb-1">Nombre *</label>
+            <input
+              name="nombre"
+              value={categoriaForm.nombre}
+              onChange={handleCategoriaChange}
+              className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
+              placeholder="Ej: Servicios"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Color</label>
+            <input
+              type="color"
+              name="color"
+              value={categoriaForm.color}
+              onChange={handleCategoriaChange}
+              className="h-[42px] w-full cursor-pointer rounded-2xl border border-slate-200 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Tipo</label>
+            <select
+              name="tipo"
+              value={categoriaForm.tipo}
+              onChange={handleCategoriaChange}
+              className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
+            >
+              <option value="Gasto">Gasto</option>
+              <option value="Ingreso">Ingreso</option>
+            </select>
+          </div>
+
+          <div className="md:col-span-4 flex flex-wrap gap-3">
+            <button
+              type="submit"
+              disabled={categoriaSaving}
+              className="rounded-2xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow hover:bg-blue-700 disabled:opacity-50"
+            >
+              {categoriaSaving
+                ? "Guardando..."
+                : categoriaEditingId
+                ? "Actualizar categoría"
+                : "Agregar categoría"}
+            </button>
+            {categoriaEditingId && (
+              <button
+                type="button"
+                onClick={resetCategoriaForm}
+                className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600"
+              >
+                Cancelar edición
+              </button>
+            )}
+          </div>
+        </form>
+
+        <div className="mt-6">
+          {categorias.length === 0 ? (
+            <p className="text-sm text-slate-500">
+              Aún no creaste categorías. Cargá la primera para organizar tus movimientos.
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {categorias.map((cat) => (
+                <li
+                  key={cat.id}
+                  className="flex flex-col gap-3 rounded-2xl border border-slate-100 px-4 py-3 md:flex-row md:items-center md:justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="h-4 w-4 rounded-full border border-slate-200"
+                      style={{ backgroundColor: cat.color }}
+                    />
+                    <div>
+                      <p className="font-semibold text-slate-800">{cat.nombre}</p>
+                      <p className="text-xs text-slate-500">{cat.tipo}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleCategoriaEdit(cat)}
+                      className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCategoriaDelete(cat.id)}
+                      className="rounded-xl border border-rose-200 px-3 py-1.5 text-sm font-medium text-rose-600 hover:bg-rose-50"
+                    >
+                      Borrar
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </section>
 
       <section className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">

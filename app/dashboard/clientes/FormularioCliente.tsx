@@ -1,8 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 
-export default function FormularioCliente({ onClose, editItem, onSave }) {
+type ClienteFormValues = {
+  id: string;
+  nombre: string;
+  email: string;
+  telefono: string;
+  tipoFactura: string;
+  tipoIVA: string;
+  cuit: string;
+};
+
+interface FormularioClienteProps {
+  onClose: () => void;
+  editItem?: ClienteFormValues | null;
+  onSave: (data: ClienteFormValues) => void;
+}
+
+export default function FormularioCliente({
+  onClose,
+  editItem,
+  onSave,
+}: FormularioClienteProps) {
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
@@ -11,17 +31,19 @@ export default function FormularioCliente({ onClose, editItem, onSave }) {
   const [cuit, setCuit] = useState("");
 
   useEffect(() => {
-    if (editItem) {
-      setNombre(editItem.nombre);
-      setEmail(editItem.email);
-      setTelefono(editItem.telefono);
-      setTipoFactura(editItem.tipoFactura);
-      setTipoIVA(editItem.tipoIVA);
-      setCuit(editItem.cuit);
-    }
+    const timer = setTimeout(() => {
+      setNombre(editItem?.nombre ?? "");
+      setEmail(editItem?.email ?? "");
+      setTelefono(editItem?.telefono ?? "");
+      setTipoFactura(editItem?.tipoFactura ?? "");
+      setTipoIVA(editItem?.tipoIVA ?? "");
+      setCuit(editItem?.cuit ?? "");
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [editItem]);
 
-  const submit = (e) => {
+  const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     onSave({

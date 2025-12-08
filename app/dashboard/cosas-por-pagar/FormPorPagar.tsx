@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { PaymentStatus } from "@/context/AppContext";
+import { type FormEvent, useMemo, useState, useEffect } from "react";
+import { PaymentStatus, type ToPayItem } from "@/context/AppContext";
+import { useApp } from "@/context/AppContext";
 
-const CATEGORIAS = [
+const DEFAULT_PAGAR_CATEGORIAS = [
   "Servicios",
   "Suscripciones",
   "Impuestos",
@@ -15,34 +16,49 @@ const CATEGORIAS = [
   "Otros",
 ];
 
-export default function FormPorPagar({
-  editItem,
-  onClose,
-  onSave,
-}: {
-  editItem: any;
+interface FormPorPagarProps {
+  editItem?: ToPayItem | null;
   onClose: () => void;
-  onSave: (data: any) => void;
-}) {
+  onSave: (data: Omit<ToPayItem, "id">) => void;
+}
+
+export default function FormPorPagar({ editItem, onClose, onSave }: FormPorPagarProps) {
+  const { categorias } = useApp();
   const [nombre, setNombre] = useState("");
   const [categoria, setCategoria] = useState("");
-  const [monto, setMonto] = useState<number | "">("");
+  const [monto, setMonto] = useState<string>("");
   const [vencimiento, setVencimiento] = useState("");
   const [status, setStatus] = useState<PaymentStatus>("falta");
 
+  const categoriasDisponibles = useMemo(() => {
+    const list = categorias.filter((c) => c.tipo === "Gasto").map((c) => c.nombre);
+    return list.length > 0 ? list : DEFAULT_PAGAR_CATEGORIAS;
+  }, [categorias]);
+
   // Cargar datos en modo edición
   useEffect(() => {
-  if (!editItem) {
-    setNombre("");
-    setCategoria("");
-    setMonto("");
-    setVencimiento("");
-    setStatus("falta");
-  }
-}, [editItem]);
+    const timer = setTimeout(() => {
+      if (editItem) {
+        setNombre(editItem.nombre || "");
+        setCategoria(editItem.categoria || "");
+        setMonto(editItem.monto ? String(editItem.monto) : "");
+        setVencimiento(editItem.vencimiento || "");
+        setStatus(editItem.status || "falta");
+        return;
+      }
+
+      setNombre("");
+      setCategoria(categoriasDisponibles[0] || "");
+      setMonto("");
+      setVencimiento("");
+      setStatus("falta");
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [editItem, categoriasDisponibles]);
 
 
-  function submit(e: any) {
+  function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     if (!nombre || !monto) return;
@@ -82,7 +98,7 @@ export default function FormPorPagar({
               className="w-full p-2 border rounded"
             >
               <option value="">Seleccionar</option>
-              {CATEGORIAS.map((c) => (
+              {categoriasDisponibles.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
@@ -95,7 +111,7 @@ export default function FormPorPagar({
             <input
               type="number"
               value={monto}
-              onChange={(e) => setMonto(e.target.value as any)}
+              onChange={(e) => setMonto(e.target.value)}
               className="w-full p-2 border rounded"
               required
             />

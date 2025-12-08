@@ -43,11 +43,12 @@ export default function IAInputPage() {
           tipo: "Gasto" as const,
         });
       }
-    } catch (e) {
+    } catch (error) {
+      console.error("Error procesando IA", error);
       setRespuesta("Error al procesar");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (

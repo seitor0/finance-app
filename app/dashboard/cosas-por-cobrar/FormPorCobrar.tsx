@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ToCollectItem } from "@/context/AppContext";
 
 interface FormPorCobrarProps {
@@ -21,6 +21,19 @@ export default function FormPorCobrar({
   const [vencimiento, setVencimiento] = useState(editItem?.vencimiento ?? "");
   const [status, setStatus] = useState(editItem?.status ?? "terminado");
   const [importante, setImportante] = useState(editItem?.importante ?? false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setNombre(editItem?.nombre ?? "");
+      setCategoria(editItem?.categoria ?? "");
+      setMonto(editItem?.monto ? String(editItem.monto) : "");
+      setVencimiento(editItem?.vencimiento ?? "");
+      setStatus(editItem?.status ?? "terminado");
+      setImportante(editItem?.importante ?? false);
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [editItem]);
 
   const guardar = () => {
     if (!nombre.trim() || !monto) return;
@@ -91,7 +104,9 @@ export default function FormPorCobrar({
           <select
             className="w-full mt-1 p-2 border rounded-lg"
             value={status}
-            onChange={(e) => setStatus(e.target.value as any)}
+            onChange={(e) =>
+              setStatus(e.target.value as ToCollectItem["status"])
+            }
             disabled={editItem?.status === "cobrado"}
           >
             <option value="terminado">Terminado</option>
