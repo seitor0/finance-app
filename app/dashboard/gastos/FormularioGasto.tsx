@@ -138,6 +138,7 @@ Texto: "${limpio}"
       monto: Number(monto),
       fecha,
       categoria: categoriaSeleccionada,
+      tipo: "Gasto",
     });
   };
 
