@@ -3,22 +3,11 @@
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { AppProvider } from "@/context/AppContext";
-import { Inter } from "next/font/google";
-
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-});
 
 export const metadata = {
-  title: "GastAPP",
-  description: "¿Dónde va mi plata?",
-  icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
-  },
+  title: "Finance App",
+  description: "Control personal de finanzas, gastos e ingresos",
 };
-
 
 export default function RootLayout({
   children,
@@ -27,7 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body className={inter.className}>
+      <body className="font-inter font-sans bg-background text-foreground">
         {/* Providers deben ir dentro del <body>, nunca fuera */}
         <AuthProvider>
           <AppProvider>{children}</AppProvider>

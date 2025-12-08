@@ -367,7 +367,7 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           className="glass-card p-6"
         >
-          <FinanzasDelMes ingresos={ingresos} gastos={gastos} />
+            <FinanzasDelMes gastos={gastos} />
         </motion.div>
       </section>
 

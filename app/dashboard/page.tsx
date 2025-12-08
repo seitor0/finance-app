@@ -22,6 +22,21 @@ type MovimientoUI = {
   tipo: "Ingreso" | "Gasto";
 };
 
+function isResultadoIA(
+  data: ResultadoIA | Record<string, unknown>
+): data is ResultadoIA {
+  if (!data || typeof data !== "object") return false;
+
+  const tipo = (data as { tipo?: unknown }).tipo;
+  return (
+    tipo === "gasto" ||
+    tipo === "ingreso" ||
+    tipo === "ahorro" ||
+    tipo === "compra-usd" ||
+    tipo === "venta-usd"
+  );
+}
+
 export default function DashboardPage() {
   const {
     ingresos,
@@ -392,38 +407,44 @@ const totalUSD = useMemo(
         body: JSON.stringify({ texto }),
       });
 
-      const json = (await resp.json()) as ResultadoIA | Record<string, unknown>;
-      setRespuesta(json);
+      const raw = (await resp.json()) as ResultadoIA | Record<string, unknown>;
 
-      if (json.tipo === "gasto") {
+      if (!isResultadoIA(raw)) {
+        setRespuesta(raw);
+        return;
+      }
+
+      setRespuesta(raw);
+
+      if (raw.tipo === "gasto") {
         await agregarGasto({
-          descripcion: json.descripcion,
-          monto: json.monto,
-          fecha: json.fecha,
-          categoria: json.categoria,
+          descripcion: raw.descripcion,
+          monto: raw.monto ?? 0,
+          fecha: raw.fecha,
+          categoria: "General",
           tipo: "Gasto" as const,
         });
       }
 
-      if (json.tipo === "ingreso") {
+      if (raw.tipo === "ingreso") {
         await agregarIngreso({
-          descripcion: json.descripcion,
-          monto: json.monto,
-          fecha: json.fecha,
+          descripcion: raw.descripcion,
+          monto: raw.monto ?? 0,
+          fecha: raw.fecha,
           tipo: "Ingreso" as const,
         });
       }
 
-      if (json.tipo === "ahorro") {
-        await agregarAhorro({ usd: json.usd, fecha: json.fecha, notas: "Ahorro por IA" });
+      if (raw.tipo === "ahorro") {
+        await agregarAhorro({ usd: raw.usd, fecha: raw.fecha, notas: "Ahorro por IA" });
       }
 
-      if (json.tipo === "compra-usd") {
-        await agregarAhorro({ usd: json.usd, fecha: json.fecha, notas: "Compra de dólares" });
+      if (raw.tipo === "compra-usd") {
+        await agregarAhorro({ usd: raw.usd, fecha: raw.fecha, notas: "Compra de dólares" });
       }
 
-      if (json.tipo === "venta-usd") {
-        await agregarAhorro({ usd: -json.usd, fecha: json.fecha, notas: "Venta de dólares" });
+      if (raw.tipo === "venta-usd") {
+        await agregarAhorro({ usd: -raw.usd, fecha: raw.fecha, notas: "Venta de dólares" });
       }
     } finally {
       setLoading(false);
@@ -757,7 +778,7 @@ const totalUSD = useMemo(
 
       {/* ============================ FILA 2 — Finanzas ============================ */}
       <section className="glass-card">
-        <FinanzasDelMes ingresos={ingresos} gastos={gastos} />
+        <FinanzasDelMes gastos={gastos} />
       </section>
 
       <section className="glass-card">
