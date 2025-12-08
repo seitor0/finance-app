@@ -50,6 +50,7 @@ export default function FormularioIngreso({ onClose, editItem, onSave }: Formula
       monto: Number(monto),    // ← CORRECCIÓN CLAVE
       fecha,
       categoria: categoria || DEFAULT_INGRESO_CATEGORIA,
+      tipo: "Ingreso" as const,
     };
 
     onSave(data);
