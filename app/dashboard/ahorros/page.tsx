@@ -3,13 +3,42 @@
 import { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import FormularioAhorro from "./FormularioAhorro";
+import { TableFilters } from "@/components/TableFilters";
 
 export default function AhorrosPage() {
   const { ahorros, borrarAhorro } = useApp();
 
   const [showForm, setShowForm] = useState(false);
+  const [filters, setFilters] = useState({
+    notas: "",
+    minUsd: "",
+    maxUsd: "",
+    desde: "",
+    hasta: "",
+  });
 
   const totalUSD = ahorros.reduce((acc, a) => acc + a.usd, 0);
+  const filteredAhorros = ahorros.filter((item) => {
+    const notasMatch = filters.notas
+      ? (item.notas || "").toLowerCase().includes(filters.notas.toLowerCase())
+      : true;
+    const minMatch = filters.minUsd ? item.usd >= Number(filters.minUsd) : true;
+    const maxMatch = filters.maxUsd ? item.usd <= Number(filters.maxUsd) : true;
+    const desdeMatch = filters.desde ? item.fecha >= filters.desde : true;
+    const hastaMatch = filters.hasta ? item.fecha <= filters.hasta : true;
+
+    return notasMatch && minMatch && maxMatch && desdeMatch && hastaMatch;
+  });
+
+  const resetFilters = () => {
+    setFilters({
+      notas: "",
+      minUsd: "",
+      maxUsd: "",
+      desde: "",
+      hasta: "",
+    });
+  };
 
   return (
     <div className="space-y-6 font-[Inter] text-slate-800">
@@ -36,10 +65,25 @@ export default function AhorrosPage() {
         </h2>
       </div>
 
+      <TableFilters
+        fields={[
+          { key: "notas", label: "Notas", type: "search", placeholder: "Palabras clave..." },
+          { key: "minUsd", label: "USD mínimos", type: "number", placeholder: "0" },
+          { key: "maxUsd", label: "USD máximos", type: "number", placeholder: "0" },
+          { key: "desde", label: "Desde", type: "date" },
+          { key: "hasta", label: "Hasta", type: "date" },
+        ]}
+        values={filters}
+        onChange={(key, value) => setFilters((prev) => ({ ...prev, [key]: value }))}
+        onClear={resetFilters}
+      />
+
       <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white shadow-sm">
-        {ahorros.length === 0 ? (
+        {filteredAhorros.length === 0 ? (
           <p className="px-4 py-6 text-center text-sm text-slate-500">
-            Todavía no registraste ahorros.
+            {ahorros.length === 0
+              ? "Todavía no registraste ahorros."
+              : "No se encontraron ahorros con esos filtros."}
           </p>
         ) : (
           <table className="min-w-full divide-y divide-slate-100 text-sm">
@@ -52,7 +96,7 @@ export default function AhorrosPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-600">
-              {ahorros.map((a) => (
+              {filteredAhorros.map((a) => (
                 <tr key={a.id} className="hover:bg-slate-50/70">
                   <td className="px-4 py-3 font-medium text-slate-700">{a.fecha}</td>
                   <td className="px-4 py-3 font-semibold text-slate-900">USD {a.usd}</td>

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import FormularioCliente from "./FormularioCliente"; 
 import "./styles.css";
+import { TableFilters } from "@/components/TableFilters";
 
 
 
@@ -13,6 +14,44 @@ export default function ClientesPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
+  const [filters, setFilters] = useState({
+    nombre: "",
+    email: "",
+    telefono: "",
+    notas: "",
+  });
+
+  const filteredClientes = useMemo(() => {
+    return clientes.filter((c) => {
+      const nombreMatch = filters.nombre
+        ? c.nombre.toLowerCase().includes(filters.nombre.toLowerCase())
+        : true;
+      const emailMatch = filters.email
+        ? c.email.toLowerCase().includes(filters.email.toLowerCase())
+        : true;
+      const telefonoMatch = filters.telefono
+        ? c.telefono.toLowerCase().includes(filters.telefono.toLowerCase())
+        : true;
+      const notasMatch = filters.notas
+        ? (c.notas || "").toLowerCase().includes(filters.notas.toLowerCase())
+        : true;
+
+      return nombreMatch && emailMatch && telefonoMatch && notasMatch;
+    });
+  }, [clientes, filters]);
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      nombre: "",
+      email: "",
+      telefono: "",
+      notas: "",
+    });
+  };
 
   const handleSave = async (data) => {
     if (editItem) {
@@ -37,6 +76,18 @@ export default function ClientesPage() {
         + Agregar cliente
       </button>
 
+      <TableFilters
+        fields={[
+          { key: "nombre", label: "Nombre", type: "search", placeholder: "Buscar por nombre" },
+          { key: "email", label: "Email", type: "search", placeholder: "correo@ejemplo" },
+          { key: "telefono", label: "Teléfono", type: "search", placeholder: "+54..." },
+          { key: "notas", label: "Notas", type: "search", placeholder: "Palabras clave" },
+        ]}
+        values={filters}
+        onChange={handleFilterChange}
+        onClear={resetFilters}
+      />
+
       <table className="min-w-full bg-white shadow rounded">
         <thead>
           <tr className="border-b">
@@ -49,7 +100,14 @@ export default function ClientesPage() {
         </thead>
 
         <tbody>
-          {clientes.map((c) => (
+          {filteredClientes.length === 0 && (
+            <tr>
+              <td colSpan={5} className="p-6 text-center text-slate-500">
+                No se encontraron clientes para los filtros actuales.
+              </td>
+            </tr>
+          )}
+          {filteredClientes.map((c) => (
             <tr key={c.id} className="border-b">
               <td className="p-3">{c.nombre}</td>
               <td className="p-3">{c.email}</td>

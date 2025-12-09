@@ -5,12 +5,21 @@ import { CalendarDays, CreditCard, Loader2 } from "lucide-react";
 
 import { useApp, type PendienteTarjeta } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
+import { TableFilters } from "@/components/TableFilters";
 
 export default function ListaTarjetas() {
   const { user } = useAuth();
   const { pendientesTarjeta, loadingData, liquidarCiclo } = useApp();
   const [processingKey, setProcessingKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [filters, setFilters] = useState({
+    tarjeta: "",
+    desde: "",
+    hasta: "",
+    minTotal: "",
+    maxTotal: "",
+    compra: "",
+  });
 
   const ordenadas = useMemo(
     () =>
@@ -20,6 +29,32 @@ export default function ListaTarjetas() {
       })),
     [pendientesTarjeta]
   );
+
+  const visibles = useMemo(() => {
+    return ordenadas.filter((grupo) => {
+      const tarjetaMatch = filters.tarjeta
+        ? grupo.tarjeta_nombre.toLowerCase().includes(filters.tarjeta.toLowerCase())
+        : true;
+      const totalMatchMin = filters.minTotal ? grupo.total >= Number(filters.minTotal) : true;
+      const totalMatchMax = filters.maxTotal ? grupo.total <= Number(filters.maxTotal) : true;
+
+      const desde = filters.desde ? new Date(filters.desde).getTime() : null;
+      const hasta = filters.hasta ? new Date(filters.hasta).getTime() : null;
+      const cicloDesde = grupo.ciclo_desde ? new Date(grupo.ciclo_desde).getTime() : null;
+      const cicloHasta = grupo.ciclo_hasta ? new Date(grupo.ciclo_hasta).getTime() : cicloDesde;
+
+      const desdeMatch = desde !== null ? cicloDesde !== null && cicloDesde >= desde : true;
+      const hastaMatch = hasta !== null ? cicloHasta !== null && cicloHasta <= hasta : true;
+
+      const compraMatch = filters.compra
+        ? grupo.compras.some((mov) =>
+            mov.descripcion.toLowerCase().includes(filters.compra.toLowerCase())
+          )
+        : true;
+
+      return tarjetaMatch && totalMatchMin && totalMatchMax && desdeMatch && hastaMatch && compraMatch;
+    });
+  }, [filters, ordenadas]);
 
   const handleLiquidar = async (grupo: PendienteTarjeta) => {
     if (!user) return;
@@ -55,9 +90,33 @@ export default function ListaTarjetas() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">Pendientes de tarjeta</h2>
         <span className="text-sm text-slate-500">
-          {ordenadas.length} ciclos pendientes
+          Mostrando {visibles.length} de {ordenadas.length}
         </span>
       </div>
+
+      <TableFilters
+        fields={[
+          { key: "tarjeta", label: "Tarjeta", type: "search", placeholder: "Nombre o banco" },
+          { key: "compra", label: "Compra", type: "search", placeholder: "Buscar detalle" },
+          { key: "minTotal", label: "Total mínimo", type: "number", placeholder: "0" },
+          { key: "maxTotal", label: "Total máximo", type: "number", placeholder: "0" },
+          { key: "desde", label: "Período desde", type: "date" },
+          { key: "hasta", label: "Período hasta", type: "date" },
+        ]}
+        values={filters}
+        onChange={(key, value) => setFilters((prev) => ({ ...prev, [key]: value }))}
+        onClear={() =>
+          setFilters({
+            tarjeta: "",
+            desde: "",
+            hasta: "",
+            minTotal: "",
+            maxTotal: "",
+            compra: "",
+          })
+        }
+        className="mb-4"
+      />
 
       {actionError && (
         <p className="mb-3 rounded-2xl bg-rose-50 px-3 py-2 text-sm text-rose-600">
@@ -69,13 +128,13 @@ export default function ListaTarjetas() {
         <div className="flex items-center justify-center py-10 text-slate-500">
           <Loader2 className="h-5 w-5 animate-spin mr-2" /> Cargando movimientos...
         </div>
-      ) : ordenadas.length === 0 ? (
+      ) : visibles.length === 0 ? (
         <p className="text-sm text-slate-500">
-          No hay gastos con tarjeta pendientes. ¡Todo al día!
+          No hay gastos que coincidan con los filtros seleccionados.
         </p>
       ) : (
         <ul className="space-y-5">
-          {ordenadas.map((grupo) => {
+          {visibles.map((grupo) => {
             const key = `${grupo.tarjeta_id}-${grupo.ciclo_id}`;
             const pagoLabel = grupo.fecha_pago
               ? new Date(grupo.fecha_pago).toLocaleDateString("es-AR")

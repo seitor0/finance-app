@@ -3,7 +3,8 @@
 import { useState } from "react";
 import SidebarLink from "@/components/SidebarLink";
 import { GastAPPLogo } from "@/components/GastAPPLogo";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Sidebar() {
   const [open, setOpen] = useState(false);
@@ -15,7 +16,10 @@ export default function Sidebar() {
         className="hidden lg:flex w-64 h-screen bg-[#111827] text-slate-200 p-6 flex-col gap-6 border-r border-white/10 fixed left-0 top-0"
       >
         <Logo />
-        <Nav />
+        <div className="flex-1 overflow-y-auto">
+          <Nav />
+        </div>
+        <AccountSection />
       </aside>
 
       {/* ===== MOBILE HEADER (BOTÓN MENÚ) ===== */}
@@ -47,7 +51,12 @@ export default function Sidebar() {
               </button>
             </div>
 
-            <Nav onClick={() => setOpen(false)} />
+            <div className="flex flex-1 flex-col gap-6 overflow-y-auto">
+              <Nav onClick={() => setOpen(false)} />
+              <div className="mt-auto">
+                <AccountSection onAction={() => setOpen(false)} />
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -99,5 +108,37 @@ function Nav({ onClick = () => {} }) {
         Configuración
       </SidebarLink>
     </nav>
+  );
+}
+
+function AccountSection({ onAction }: { onAction?: () => void }) {
+  const { user, logout, loadingUser } = useAuth();
+
+  if (!user) return null;
+
+  const nombre = user.displayName || "Usuario sin nombre";
+  const email = user.email || "—";
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <p className="text-xs uppercase tracking-widest text-slate-400">Cuenta</p>
+      <div className="mt-2 space-y-0.5">
+        <p className="text-sm font-semibold text-white">{nombre}</p>
+        <p className="text-xs text-slate-400">{email}</p>
+      </div>
+      <button
+        type="button"
+        onClick={async () => {
+          if (loadingUser) return;
+          await logout();
+          onAction?.();
+        }}
+        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-600 disabled:opacity-50"
+        disabled={loadingUser}
+      >
+        <LogOut className="h-4 w-4" />
+        Cerrar sesión
+      </button>
+    </div>
   );
 }

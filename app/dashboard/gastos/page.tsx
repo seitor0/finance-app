@@ -1,14 +1,57 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { useState } from "react";
 import FormularioGasto from "./FormularioGasto";
 import "@/styles/gastos.css";
+import { TableFilters } from "@/components/TableFilters";
 
 export default function GastosPage() {
   const { gastos, agregarGasto, editarGasto, borrarGasto } = useApp();
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
+  const [filters, setFilters] = useState({
+    descripcion: "",
+    categoria: "",
+    minMonto: "",
+    maxMonto: "",
+    desde: "",
+    hasta: "",
+  });
+
+  const categorias = useMemo(() => {
+    const valores = new Set<string>();
+    gastos.forEach((g) => {
+      if (g.categoria) valores.add(g.categoria);
+    });
+    return Array.from(valores).sort((a, b) => a.localeCompare(b));
+  }, [gastos]);
+
+  const filteredGastos = useMemo(() => {
+    return gastos.filter((item) => {
+      const descMatch = filters.descripcion
+        ? item.descripcion.toLowerCase().includes(filters.descripcion.toLowerCase())
+        : true;
+      const categoriaMatch = filters.categoria ? item.categoria === filters.categoria : true;
+      const minMatch = filters.minMonto ? item.monto >= Number(filters.minMonto) : true;
+      const maxMatch = filters.maxMonto ? item.monto <= Number(filters.maxMonto) : true;
+      const desdeMatch = filters.desde ? item.fecha >= filters.desde : true;
+      const hastaMatch = filters.hasta ? item.fecha <= filters.hasta : true;
+
+      return descMatch && categoriaMatch && minMatch && maxMatch && desdeMatch && hastaMatch;
+    });
+  }, [filters, gastos]);
+
+  const resetFilters = () => {
+    setFilters({
+      descripcion: "",
+      categoria: "",
+      minMonto: "",
+      maxMonto: "",
+      desde: "",
+      hasta: "",
+    });
+  };
 
   return (
     <div className="space-y-6 font-[Inter] text-slate-800">
@@ -29,6 +72,26 @@ export default function GastosPage() {
         </button>
       </div>
 
+      <TableFilters
+        fields={[
+          { key: "descripcion", label: "Descripción", type: "search", placeholder: "Buscar..." },
+          {
+            key: "categoria",
+            label: "Categoría",
+            type: "select",
+            options: categorias.map((cat) => ({ value: cat, label: cat })),
+            emptyOptionLabel: "Todas",
+          },
+          { key: "minMonto", label: "Monto mínimo", type: "number", placeholder: "0" },
+          { key: "maxMonto", label: "Monto máximo", type: "number", placeholder: "0" },
+          { key: "desde", label: "Desde", type: "date" },
+          { key: "hasta", label: "Hasta", type: "date" },
+        ]}
+        values={filters}
+        onChange={(key, value) => setFilters((prev) => ({ ...prev, [key]: value }))}
+        onClear={resetFilters}
+      />
+
       <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-100 text-sm">
           <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -41,15 +104,17 @@ export default function GastosPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-600">
-            {gastos.length === 0 && (
+            {filteredGastos.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
-                  No hay gastos registrados.
+                  {gastos.length === 0
+                    ? "No hay gastos registrados."
+                    : "No encontramos gastos con estos filtros."}
                 </td>
               </tr>
             )}
 
-            {gastos.map((g) => (
+            {filteredGastos.map((g) => (
               <tr key={g.id} className="hover:bg-slate-50/70">
                 <td className="px-4 py-3 font-medium text-slate-700">{g.fecha}</td>
                 <td className="px-4 py-3">{g.categoria || "—"}</td>

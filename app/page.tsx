@@ -25,6 +25,7 @@ export default function DashboardPage() {
     ahorros,
     cosasPorPagar,
     cosasPorCobrar,
+    dineroDisponible,
     agregarIngreso,
     agregarGasto,
     agregarAhorro,
@@ -167,6 +168,20 @@ export default function DashboardPage() {
   // ============================
   const isMobile = typeof window !== "undefined" && window.innerWidth < 1024;
 
+  const quickStats = [
+    { label: "Dinero disponible", value: dineroDisponible ?? 0 },
+    { label: "Gastos del mes", value: totalGastosMes },
+    { label: "Deudas del mes", value: totalDeudasMes },
+    { label: "Cobros del mes", value: totalCobrosPendientes },
+  ];
+
+  const formatCurrency = (value: number) =>
+    Number(value || 0).toLocaleString("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      maximumFractionDigits: 0,
+    });
+
   if (isMobile) {
     return (
       <div className="space-y-6 p-4 fade-up">
@@ -189,6 +204,22 @@ export default function DashboardPage() {
               pendientesMes={totalDeudasMes}
               cobrosPendientes={totalCobrosPendientes}
             />
+          </div>
+
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            {quickStats.map((stat) => (
+              <div
+                key={stat.label}
+                className="rounded-2xl border border-slate-100 bg-white/70 px-4 py-3 shadow-sm"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {stat.label}
+                </p>
+                <p className="mt-1 text-lg font-bold text-slate-900">
+                  {formatCurrency(stat.value)}
+                </p>
+              </div>
+            ))}
           </div>
         </motion.div>
 
