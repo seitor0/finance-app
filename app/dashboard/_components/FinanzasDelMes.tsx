@@ -39,14 +39,22 @@ export default function FinanzasDelMes({ gastos }: Props) {
   // ============================
   // FILTRO: GASTOS DEL MES
   // ============================
+  const parseFechaLocal = (valor: string | undefined) => {
+    if (!valor) return null;
+    const [yearStr, monthStr, dayStr] = valor.split("-");
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    const day = Number(dayStr);
+    if (!year || !month || !day) return null;
+    const fecha = new Date(year, month - 1, day);
+    return Number.isNaN(fecha.getTime()) ? null : fecha;
+  };
+
   const gastosMes = useMemo(() => {
     return gastos.filter((g) => {
-      const f = new Date(g.fecha ?? "");
-      return (
-        !isNaN(f.getTime()) &&
-        f.getMonth() === mesActual &&
-        f.getFullYear() === añoActual
-      );
+      const f = parseFechaLocal(g.fecha);
+      if (!f) return false;
+      return f.getMonth() === mesActual && f.getFullYear() === añoActual;
     });
   }, [gastos, mesActual, añoActual]);
 
