@@ -18,8 +18,14 @@ const COLORS = [
   "#795548",
 ];
 
+type ChartDatum = {
+  name: string;
+  value: number;
+  color?: string;
+};
+
 type ChartProps = {
-  data: { name: string; value: number }[];
+  data: ChartDatum[];
 };
 
 export default function Chart({ data }: ChartProps) {
@@ -42,10 +48,10 @@ export default function Chart({ data }: ChartProps) {
           innerRadius="55%"
           paddingAngle={2}
         >
-          {data.map((_, index) => (
+          {data.map((entry, index) => (
             <Cell
               key={`cell-${index}`}
-              fill={COLORS[index % COLORS.length]}
+              fill={entry.color ?? COLORS[index % COLORS.length]}
             />
           ))}
         </Pie>
