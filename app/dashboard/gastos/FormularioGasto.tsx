@@ -47,13 +47,23 @@ export default function FormularioGasto({ onClose, onSave, editItem }: Formulari
   // Cargar datos al editar
   // ==========================
   useEffect(() => {
+    if (!editItem) return;
+
     const timer = setTimeout(() => {
-      if (editItem) {
-        setDescripcion(editItem.descripcion);
-        setMonto(String(editItem.monto ?? ""));
-        setFecha(editItem.fecha);
-        setCategoria(editItem.categoria || "");
-      } else if (!categoria) {
+      setDescripcion(editItem.descripcion);
+      setMonto(String(editItem.monto ?? ""));
+      setFecha(editItem.fecha);
+      setCategoria(editItem.categoria || "");
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [editItem]);
+
+  useEffect(() => {
+    if (editItem) return;
+
+    const timer = setTimeout(() => {
+      if (!categoria) {
         setDescripcion("");
         setMonto("");
         setFecha(new Date().toISOString().slice(0, 10));

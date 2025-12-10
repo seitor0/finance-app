@@ -83,7 +83,14 @@ export default function DashboardPage() {
     [cosasPorCobrar, mesActualKey]
   );
 
-  const totalCobrosPendientes = cobrosMes.reduce(
+  const totalCobrosPendientesMes = cobrosMes.reduce((acc, c) => acc + Number(c.monto ?? 0), 0);
+
+  const cobrosPendientes = useMemo(
+    () => cosasPorCobrar.filter((c) => c.status !== "cobrado"),
+    [cosasPorCobrar]
+  );
+
+  const totalCobrosPendientes = cobrosPendientes.reduce(
     (acc, c) => acc + Number(c.monto ?? 0),
     0
   );
@@ -172,7 +179,7 @@ export default function DashboardPage() {
     { label: "Dinero disponible", value: dineroDisponible ?? 0 },
     { label: "Gastos del mes", value: totalGastosMes },
     { label: "Deudas del mes", value: totalDeudasMes },
-    { label: "Cobros del mes", value: totalCobrosPendientes },
+    { label: "Cobros pendientes", value: totalCobrosPendientes },
   ];
 
   const formatCurrency = (value: number) =>
@@ -202,7 +209,7 @@ export default function DashboardPage() {
               ingresosMes={totalIngresosMes}
               gastosMes={totalGastosMes}
               pendientesMes={totalDeudasMes}
-              cobrosPendientes={totalCobrosPendientes}
+              cobrosPendientes={totalCobrosPendientesMes}
             />
           </div>
 
