@@ -336,22 +336,22 @@ const resolverConsultaIA = (
         ? datasets.ingresos
         : datasets.ahorros;
 
-  const valores = dataset
-    .map((item) => {
-      const fecha = toDate(item.fecha);
-      if (!estaEnPeriodo(fecha, consulta.periodo)) return null;
-      if (consulta.categoria && "categoria" in item) {
-        const cat = (item.categoria || "").toLowerCase();
-        if (!cat.includes(consulta.categoria.toLowerCase())) {
-          return null;
-        }
-      } else if (consulta.categoria && !("categoria" in item)) {
-        return null;
+  const valores = dataset.reduce<{ monto: number; fecha: string }[]>((acc, item) => {
+    if (!item.fecha) return acc;
+    const fecha = toDate(item.fecha);
+    if (!estaEnPeriodo(fecha, consulta.periodo)) return acc;
+    if (consulta.categoria && "categoria" in item) {
+      const cat = (item.categoria || "").toLowerCase();
+      if (!cat.includes(consulta.categoria.toLowerCase())) {
+        return acc;
       }
-      const monto = "usd" in item ? item.usd ?? 0 : item.monto ?? 0;
-      return { monto, fecha: item.fecha };
-    })
-    .filter((entry): entry is { monto: number; fecha?: string } => Boolean(entry));
+    } else if (consulta.categoria && !("categoria" in item)) {
+      return acc;
+    }
+    const monto = "usd" in item ? item.usd ?? 0 : item.monto ?? 0;
+    acc.push({ monto, fecha: item.fecha });
+    return acc;
+  }, []);
 
   if (valores.length === 0) {
     return {
