@@ -104,6 +104,9 @@ function Nav({ onClick = () => {} }) {
       <SidebarLink href="/dashboard/tarjetas" icon="credit-card">
         Gastos con tarjeta
       </SidebarLink>
+      <SidebarLink href="/dashboard/calendario-gastos" icon="calendar">
+        Calendario de gastos
+      </SidebarLink>
       <SidebarLink href="/dashboard/configuracion" icon="settings">
         Configuración
       </SidebarLink>

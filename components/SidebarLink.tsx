@@ -13,6 +13,7 @@ const ICONS: Record<string, string> = {
   users: "👥",
   "credit-card": "💳",
   dollar: "💲",
+  calendar: "📅",
   settings: "⚙️",
 };
 

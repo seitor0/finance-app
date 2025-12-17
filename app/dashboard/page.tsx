@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import clsx from "clsx";
 import { useApp } from "@/context/AppContext";
 import type {
@@ -20,6 +20,20 @@ type MovimientoUI = {
   monto: number | null;
   fecha: string;
   tipo: "Ingreso" | "Gasto";
+};
+
+const formatCurrencyARS = (value: number) =>
+  Number(value || 0).toLocaleString("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 0,
+  });
+
+const getTodayKey = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+    now.getDate()
+  ).padStart(2, "0")}`;
 };
 
 function isResultadoIA(
@@ -164,6 +178,19 @@ const totalUSD = useMemo(
   [ahorros]
 );
 
+  const [fechaHoy, setFechaHoy] = useState(getTodayKey());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setFechaHoy((prev) => {
+        const actual = getTodayKey();
+        return prev === actual ? prev : actual;
+      });
+    }, 60 * 60 * 1000);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
   type MovimientoDetalle = {
     id: string;
     tipo: "Ingreso" | "Gasto" | "Deuda" | "Tarjeta";
@@ -267,11 +294,71 @@ const totalUSD = useMemo(
     return { data, maxValor };
   }, [ingresos, gastos, mesActualKey, añoActual, mesActualNumero]);
 
-  const sugerenciasAI = [
-    "Gastaste más en supermercado que el mes pasado.",
-    "Podrías transferir $50.000 a ahorros para mantener el ritmo.",
-    "Te quedan 5 días para pagar la tarjeta.",
-  ];
+  const sugerenciasAI = useMemo(() => {
+    const [anioStr, mesStr, diaStr] = fechaHoy.split("-");
+    const parsedYear = Number(anioStr);
+    const parsedMonth = Number(mesStr);
+    const parsedDay = Number(diaStr);
+
+    const referenceDate =
+      Number.isFinite(parsedYear) && Number.isFinite(parsedMonth) && Number.isFinite(parsedDay)
+        ? new Date(parsedYear, parsedMonth - 1, parsedDay)
+        : new Date();
+
+    const diaMes = referenceDate.getDate();
+    const diasEnMes = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0).getDate();
+    const diasRestantes = Math.max(diasEnMes - diaMes, 0);
+    const gastoPromedioDiario = diaMes ? totalGastosMes / diaMes : 0;
+    const gastoProyectadoMes = gastoPromedioDiario * diasEnMes;
+    const ahorroFaltante = Math.max(ahorroDeseado - ahorroRealMes, 0);
+    const ahorroExcedente = Math.max(ahorroRealMes - ahorroDeseado, 0);
+
+    const diasTip =
+      diasRestantes === 0
+        ? "Hoy cierra el mes, revisá tus gastos y registrá todo lo pendiente."
+        : `Quedan ${diasRestantes} días del mes, ajustá tus gastos si es necesario.`;
+
+    const promedioTip =
+      totalGastosMes > 0
+        ? `Tu gasto promedio diario es ${formatCurrencyARS(
+            gastoPromedioDiario
+          )}. A este ritmo cerrarías el mes con ${formatCurrencyARS(gastoProyectadoMes)}.`
+        : "Todavía no hay gastos cargados este mes. Aprovechá para registrar los primeros movimientos.";
+
+    const ahorroTip =
+      ahorroFaltante > 0
+        ? `Estás a ${formatCurrencyARS(
+            ahorroFaltante
+          )} de alcanzar tu objetivo de ahorro mensual.`
+        : `Ya superaste tu objetivo de ahorro del mes por ${formatCurrencyARS(ahorroExcedente)}.`;
+
+    const pool: string[] = [ahorroTip];
+
+    if (totalDeudasMes > 0) {
+      pool.push(`Tenés ${formatCurrencyARS(totalDeudasMes)} por pagar este mes.`);
+    } else {
+      pool.push("No hay pagos pendientes por vencer este mes. Seguí así.");
+    }
+
+    if (totalCobrosPendientes > 0) {
+      pool.push(`Recordá cobrar ${formatCurrencyARS(totalCobrosPendientes)} en los próximos días.`);
+    } else {
+      pool.push("No tenés cobros pendientes. Podés enfocarte en tus metas.");
+    }
+
+    const seed = Number.parseInt(fechaHoy.replace(/-/g, ""), 10) || 1;
+    const poolIndex = pool.length > 0 ? seed % pool.length : 0;
+    const extraTip = pool[poolIndex] ?? "Revisá tus categorías más grandes para ajustar el mes.";
+
+    return [diasTip, promedioTip, extraTip];
+  }, [
+    ahorroDeseado,
+    ahorroRealMes,
+    fechaHoy,
+    totalCobrosPendientes,
+    totalDeudasMes,
+    totalGastosMes,
+  ]);
 
   const iconoMovimiento: Record<MovimientoDetalle["tipo"], string> = {
     Ingreso: "💰",
